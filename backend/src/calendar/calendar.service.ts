@@ -16,14 +16,21 @@ export interface CalendarEvent {
 
 @Injectable()
 export class CalendarService implements OnModuleInit {
-  private calendarClient: calendar_v3.Calendar;
+  private calendarClient: calendar_v3.Calendar | null = null;
 
   private readonly calendarId =
     process.env.GOOGLE_CALENDAR_ID ||
     "c_93cae9ea9243fc7eb329137b547c18329f7de8069d5064dace1aaeb66df6eab6@group.calendar.google.com";
 
   onModuleInit() {
-    this.calendarClient = this.buildClient();
+    try {
+      this.calendarClient = this.buildClient();
+      console.log("✅ Google Calendar client initialized");
+    } catch (err: any) {
+      // Không throw — app vẫn chạy, chỉ calendar features không dùng được
+      console.warn("⚠️  Google Calendar not configured:", err.message);
+      console.warn("   Set GOOGLE_API_KEY or GOOGLE_SERVICE_ACCOUNT_JSON in .env");
+    }
   }
 
   private buildClient(): calendar_v3.Calendar {
@@ -61,6 +68,9 @@ export class CalendarService implements OnModuleInit {
   }
 
   private async fetchEvents(timeMin: string, timeMax: string): Promise<CalendarEvent[]> {
+    if (!this.calendarClient) {
+      throw new Error("Google Calendar chưa được cấu hình. Set GOOGLE_API_KEY hoặc GOOGLE_SERVICE_ACCOUNT_JSON trong .env");
+    }
     const response = await this.calendarClient.events.list({
       calendarId: this.calendarId,
       timeMin,
