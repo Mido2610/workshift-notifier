@@ -1,0 +1,37 @@
+import axios from "axios";
+
+const BASE = import.meta.env.VITE_API_URL || "";
+
+const api = axios.create({ baseURL: BASE });
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// ---------- Auth ----------
+export const getMe = () => api.get("/api/auth/me").then((r) => r.data);
+
+// ---------- Calendar ----------
+export const getCalendarMonth = (year: number, month: number) =>
+  api.get(`/api/calendar/month?year=${year}&month=${month}`).then((r) => r.data);
+
+export const getCalendarDay = (date: string) =>
+  api.get(`/api/calendar/events?date=${date}`).then((r) => r.data);
+
+// ---------- Notification ----------
+export const sendNow = (date?: string) =>
+  api.post("/api/notification/send-now", { date }).then((r) => r.data);
+
+export const getLogs = (page = 1, limit = 20) =>
+  api.get(`/api/notification/logs?page=${page}&limit=${limit}`).then((r) => r.data);
+
+export const getStats = () =>
+  api.get("/api/notification/stats").then((r) => r.data);
+
+// ---------- Config ----------
+export const getConfig = () => api.get("/api/config").then((r) => r.data);
+
+export const saveConfig = (data: Record<string, unknown>) =>
+  api.post("/api/config", data).then((r) => r.data);

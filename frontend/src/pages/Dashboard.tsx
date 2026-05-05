@@ -1,0 +1,223 @@
+import { useEffect, useState, useCallback } from "react";
+import moment from "moment";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Send,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Zap,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import CalendarGrid from "../components/CalendarGrid";
+import { getCalendarMonth, getCalendarDay, getStats, sendNow } from "../api";
+import type { CalendarEvent, Stats } from "../types";
+
+export default function Dashboard() {
+  const [year, setYear] = useState(moment().year());
+  const [month, setMonth] = useState(moment().month() + 1);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loadingCal, setLoadingCal] = useState(false);
+  const [sendingDate, setSendingDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    moment().format("YYYY-MM-DD")
+  );
+
+  const loadMonth = useCallback(async () => {
+    setLoadingCal(true);
+    try {
+      const data = await getCalendarMonth(year, month);
+      setEvents(data.events || []);
+    } catch {
+      toast.error("Không tải được lịch");
+    } finally {
+      setLoadingCal(false);
+    }
+  }, [year, month]);
+
+  const loadToday = useCallback(async () => {
+    const today = moment().format("YYYY-MM-DD");
+    const data = await getCalendarDay(today);
+    setTodayEvents(data.events || []);
+  }, []);
+
+  const loadStats = useCallback(async () => {
+    const s = await getStats();
+    setStats(s);
+  }, []);
+
+  useEffect(() => {
+    loadMonth();
+  }, [loadMonth]);
+
+  useEffect(() => {
+    loadToday();
+    loadStats();
+  }, [loadToday, loadStats]);
+
+  const handleSendNow = async (date?: string) => {
+    const target = date || moment().format("YYYY-MM-DD");
+    setSendingDate(target);
+    try {
+      const res = await sendNow(target);
+      toast.success(
+        `Đã gửi ${res.sent} • Bỏ qua ${res.skipped} • Lỗi ${res.failed}`
+      );
+      loadStats();
+    } catch {
+      toast.error("Gửi thất bại");
+    } finally {
+      setSendingDate(null);
+    }
+  };
+
+  const prevMonth = () => {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+  };
+
+  const selectedEvents = events.filter(e => e.date === selectedDate);
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-100">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {moment().format("dddd, DD/MM/YYYY")}
+          </p>
+        </div>
+        <button
+          onClick={() => handleSendNow()}
+          disabled={!!sendingDate}
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+        >
+          {sendingDate === moment().format("YYYY-MM-DD") ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+          Gửi hôm nay
+        </button>
+      </div>
+
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[
+            { label: "Đã gửi", value: stats.sent, icon: CheckCircle, color: "text-green-400", bg: "bg-green-400/10" },
+            { label: "Thất bại", value: stats.failed, icon: XCircle, color: "text-red-400", bg: "bg-red-400/10" },
+            { label: "Tổng", value: stats.total, icon: Clock, color: "text-gray-400", bg: "bg-gray-400/10" },
+          ].map(({ label, value, icon: Icon, color, bg }) => (
+            <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center`}>
+                <Icon className={`w-5 h-5 ${color}`} />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold">{value}</p>
+                <p className="text-xs text-gray-500">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-6">
+        {/* Calendar */}
+        <div className="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-medium text-gray-200">
+              {moment({ year, month: month - 1 }).format("MMMM YYYY")}
+            </h2>
+            <div className="flex items-center gap-1">
+              {loadingCal && <RefreshCw className="w-4 h-4 text-gray-500 animate-spin mr-2" />}
+              <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <CalendarGrid
+            year={year}
+            month={month}
+            events={events}
+            onDayClick={setSelectedDate}
+          />
+        </div>
+
+        {/* Side panel */}
+        <div className="space-y-4">
+          {/* Today's shifts */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <h3 className="text-sm font-medium text-gray-200">Trực hôm nay</h3>
+            </div>
+            {todayEvents.length === 0 ? (
+              <p className="text-xs text-gray-600">Không có ca trực hôm nay</p>
+            ) : (
+              <div className="space-y-2">
+                {todayEvents.map((e) => (
+                  <div key={e.id} className="bg-gray-800/60 rounded-lg p-3">
+                    <p className="text-sm font-medium text-gray-200">
+                      {e.displayName || e.summary}
+                    </p>
+                    {e.startDateTime && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {moment(e.startDateTime).format("HH:mm")} –{" "}
+                        {moment(e.endDateTime).format("HH:mm")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Selected day */}
+          {selectedDate !== moment().format("YYYY-MM-DD") && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-200">
+                  {moment(selectedDate).format("DD/MM")}
+                </h3>
+                <button
+                  onClick={() => handleSendNow(selectedDate)}
+                  disabled={!!sendingDate}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Send className="w-3 h-3" />
+                  Gửi ngày này
+                </button>
+              </div>
+              {selectedEvents.length === 0 ? (
+                <p className="text-xs text-gray-600">Không có ca trực</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedEvents.map((e) => (
+                    <div key={e.id} className="bg-gray-800/60 rounded-lg p-2.5">
+                      <p className="text-sm text-gray-200">
+                        {e.displayName || e.summary}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
