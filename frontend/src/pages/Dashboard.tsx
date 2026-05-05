@@ -131,89 +131,99 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Calendar */}
-        <div className="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-medium text-gray-200">
-              {moment({ year, month: month - 1 }).format("MMMM YYYY")}
-            </h2>
-            <div className="flex items-center gap-1">
-              {loadingCal && <RefreshCw className="w-4 h-4 text-gray-500 animate-spin mr-2" />}
-              <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Calendar — full width */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-gray-100">
+            {moment({ year, month: month - 1 }).format("MMMM YYYY")}
+          </h2>
+          <div className="flex items-center gap-1">
+            {loadingCal && <RefreshCw className="w-4 h-4 text-gray-500 animate-spin mr-2" />}
+            <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 transition-colors">
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
-          <CalendarGrid
-            year={year}
-            month={month}
-            events={events}
-            onDayClick={setSelectedDate}
-          />
+        </div>
+        <CalendarGrid
+          year={year}
+          month={month}
+          events={events}
+          onDayClick={setSelectedDate}
+        />
+      </div>
+
+      {/* Bottom row: Today + Selected day */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Today's shifts */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-yellow-400" />
+            <h3 className="font-medium text-gray-200">Trực hôm nay</h3>
+          </div>
+          {todayEvents.length === 0 ? (
+            <p className="text-sm text-gray-600">Không có ca trực hôm nay</p>
+          ) : (
+            <div className="space-y-2">
+              {todayEvents.map((e) => (
+                <div key={e.id} className="bg-gray-800/60 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-200">
+                    {e.displayName || e.summary}
+                  </p>
+                  {e.startDateTime && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {moment(e.startDateTime).format("HH:mm")} –{" "}
+                      {moment(e.endDateTime).format("HH:mm")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Side panel */}
-        <div className="space-y-4">
-          {/* Today's shifts */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-4 h-4 text-yellow-400" />
-              <h3 className="text-sm font-medium text-gray-200">Trực hôm nay</h3>
+        {/* Selected day */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="font-medium text-gray-200">
+                {selectedDate === moment().format("YYYY-MM-DD")
+                  ? "Hôm nay"
+                  : moment(selectedDate).format("dddd, DD/MM")}
+              </h3>
             </div>
-            {todayEvents.length === 0 ? (
-              <p className="text-xs text-gray-600">Không có ca trực hôm nay</p>
-            ) : (
-              <div className="space-y-2">
-                {todayEvents.map((e) => (
-                  <div key={e.id} className="bg-gray-800/60 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-200">
-                      {e.displayName || e.summary}
-                    </p>
-                    {e.startDateTime && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {moment(e.startDateTime).format("HH:mm")} –{" "}
-                        {moment(e.endDateTime).format("HH:mm")}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Selected day */}
-          {selectedDate !== moment().format("YYYY-MM-DD") && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-200">
-                  {moment(selectedDate).format("DD/MM")}
-                </h3>
-                <button
-                  onClick={() => handleSendNow(selectedDate)}
-                  disabled={!!sendingDate}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <Send className="w-3 h-3" />
-                  Gửi ngày này
-                </button>
-              </div>
-              {selectedEvents.length === 0 ? (
-                <p className="text-xs text-gray-600">Không có ca trực</p>
+            <button
+              onClick={() => handleSendNow(selectedDate)}
+              disabled={!!sendingDate}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {sendingDate === selectedDate ? (
+                <RefreshCw className="w-3 h-3 animate-spin" />
               ) : (
-                <div className="space-y-2">
-                  {selectedEvents.map((e) => (
-                    <div key={e.id} className="bg-gray-800/60 rounded-lg p-2.5">
-                      <p className="text-sm text-gray-200">
-                        {e.displayName || e.summary}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <Send className="w-3 h-3" />
               )}
+              Gửi ngày này
+            </button>
+          </div>
+          {selectedEvents.length === 0 ? (
+            <p className="text-sm text-gray-600">Không có ca trực</p>
+          ) : (
+            <div className="space-y-2">
+              {selectedEvents.map((e) => (
+                <div key={e.id} className="bg-gray-800/60 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-200">
+                    {e.displayName || e.summary}
+                  </p>
+                  {e.startDateTime && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {moment(e.startDateTime).format("HH:mm")} –{" "}
+                      {moment(e.endDateTime).format("HH:mm")}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

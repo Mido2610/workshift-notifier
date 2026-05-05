@@ -30,14 +30,14 @@ export default function CalendarGrid({ year, month, events, onDayClick }: Props)
 
   return (
     <div>
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7 mb-2">
         {dayLabels.map((d) => (
-          <div key={d} className="text-center text-xs text-gray-500 py-2 font-medium">
+          <div key={d} className="text-center text-xs text-gray-400 py-2 font-semibold tracking-wide">
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, idx) => {
           if (!day) return <div key={`empty-${idx}`} />;
           const dateStr = moment({ year, month: month - 1, day }).format("YYYY-MM-DD");
@@ -48,32 +48,34 @@ export default function CalendarGrid({ year, month, events, onDayClick }: Props)
             <button
               key={dateStr}
               onClick={() => onDayClick?.(dateStr)}
-              className={`relative min-h-[64px] p-1.5 rounded-lg border text-left transition-colors ${
+              className={`relative min-h-[90px] p-2 rounded-xl border text-left transition-all ${
                 isToday
-                  ? "border-brand-500/50 bg-brand-600/10"
-                  : "border-gray-800 hover:border-gray-700 hover:bg-gray-800/50"
+                  ? "border-brand-500/60 bg-brand-600/10 shadow-sm shadow-brand-500/10"
+                  : "border-gray-800 hover:border-gray-600 hover:bg-gray-800/60"
               }`}
             >
               <span
-                className={`text-xs font-medium block mb-1 ${
-                  isToday ? "text-brand-400" : "text-gray-400"
+                className={`text-sm font-semibold block mb-1.5 ${
+                  isToday
+                    ? "text-brand-400"
+                    : "text-gray-300"
                 }`}
               >
                 {day}
               </span>
-              <div className="space-y-0.5">
-                {dayEvents.slice(0, 2).map((e) => (
+              <div className="space-y-1">
+                {dayEvents.slice(0, 3).map((e) => (
                   <div
                     key={e.id}
-                    className="text-[10px] bg-brand-600/20 text-brand-300 rounded px-1 py-0.5 truncate"
+                    className="text-xs bg-brand-600/25 text-brand-200 rounded-md px-1.5 py-1 truncate font-medium leading-tight"
                     title={e.displayName || e.summary}
                   >
                     {e.displayName || e.summary}
                   </div>
                 ))}
-                {dayEvents.length > 2 && (
-                  <div className="text-[10px] text-gray-500">
-                    +{dayEvents.length - 2} more
+                {dayEvents.length > 3 && (
+                  <div className="text-[11px] text-gray-500 pl-0.5">
+                    +{dayEvents.length - 3}
                   </div>
                 )}
               </div>
