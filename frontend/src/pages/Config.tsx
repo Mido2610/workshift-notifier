@@ -4,6 +4,34 @@ import toast from "react-hot-toast";
 import { getConfig, saveConfig } from "../api";
 import type { NotifyConfig } from "../types";
 
+function Toggle({
+  checked,
+  onChange,
+  color = "bg-brand-500",
+}: {
+  checked: boolean;
+  onChange: () => void;
+  color?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+        checked ? color : "bg-gray-700"
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function Config() {
   const [config, setConfig] = useState<NotifyConfig>({
     enabled: true,
@@ -44,70 +72,56 @@ export default function Config() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Settings className="w-6 h-6 text-gray-400" />
-        <h1 className="text-2xl font-semibold">Cấu hình</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <Settings className="w-5 h-5 text-gray-400" />
+        <h1 className="text-xl font-semibold text-gray-100">Cấu hình</h1>
       </div>
 
-      <div className="space-y-4">
-        {/* Enable toggle */}
+      <div className="space-y-3">
+
+        {/* Auto send toggle */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.enabled ? "bg-green-400/10" : "bg-gray-700/50"}`}>
-                <Power className={`w-5 h-5 ${config.enabled ? "text-green-400" : "text-gray-500"}`} />
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${config.enabled ? "bg-green-500/15" : "bg-gray-800"}`}>
+                <Power className={`w-4 h-4 ${config.enabled ? "text-green-400" : "text-gray-500"}`} />
               </div>
               <div>
-                <p className="font-medium text-gray-200">Tự động gửi</p>
-                <p className="text-sm text-gray-500">
-                  {config.enabled ? "Đang bật — scheduler đang chạy" : "Đang tắt"}
+                <p className="text-sm font-medium text-gray-200">Tự động gửi</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {config.enabled ? "Scheduler đang chạy" : "Đang tắt"}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                config.enabled ? "bg-green-500" : "bg-gray-700"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  config.enabled ? "translate-x-6" : "translate-x-0.5"
-                }`}
-              />
-            </button>
+            <Toggle
+              checked={config.enabled}
+              onChange={() => setConfig((c) => ({ ...c, enabled: !c.enabled }))}
+              color="bg-green-500"
+            />
           </div>
         </div>
 
-        {/* Day start notification */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        {/* Day start */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
           <div className="flex items-center gap-3">
-            <Bell className="w-5 h-5 text-gray-400" />
-            <h3 className="font-medium text-gray-200">Gửi đầu ngày</h3>
+            <Bell className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-medium text-gray-200">Gửi đầu ngày</h3>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-300">Gửi thông báo lúc đầu ngày</p>
-              <p className="text-xs text-gray-500">Liệt kê tất cả ca trực trong ngày</p>
+              <p className="text-sm text-gray-300">Bật thông báo đầu ngày</p>
+              <p className="text-xs text-gray-500 mt-0.5">Liệt kê toàn bộ ca trực trong ngày</p>
             </div>
-            <button
-              onClick={() => setConfig((c) => ({ ...c, sendAtDayStart: !c.sendAtDayStart }))}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                config.sendAtDayStart ? "bg-brand-500" : "bg-gray-700"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  config.sendAtDayStart ? "translate-x-6" : "translate-x-0.5"
-                }`}
-              />
-            </button>
+            <Toggle
+              checked={config.sendAtDayStart}
+              onChange={() => setConfig((c) => ({ ...c, sendAtDayStart: !c.sendAtDayStart }))}
+            />
           </div>
 
           {config.sendAtDayStart && (
-            <div>
-              <label className="text-xs text-gray-400 block mb-2">
+            <div className="pt-1 border-t border-gray-800">
+              <label className="text-xs text-gray-500 block mb-2">
                 Giờ gửi (giờ Việt Nam)
               </label>
               <input
@@ -116,69 +130,69 @@ export default function Config() {
                 onChange={(e) =>
                   setConfig((c) => ({ ...c, dayStartTime: e.target.value }))
                 }
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500 w-36"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500 w-32"
               />
             </div>
           )}
         </div>
 
         {/* Before shift */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
           <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-gray-400" />
-            <h3 className="font-medium text-gray-200">Nhắc trước ca</h3>
+            <Clock className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-medium text-gray-200">Nhắc trước ca</h3>
           </div>
 
           <div>
-            <label className="text-xs text-gray-400 block mb-2">
-              Gửi trước giờ bắt đầu ca (phút)
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min={0}
-                max={120}
-                step={5}
-                value={config.sendBeforeMinutes}
-                onChange={(e) =>
-                  setConfig((c) => ({
-                    ...c,
-                    sendBeforeMinutes: Number(e.target.value),
-                  }))
-                }
-                className="flex-1 accent-brand-500"
-              />
-              <span className="text-sm font-medium text-brand-400 w-20 text-right">
-                {config.sendBeforeMinutes === 0
-                  ? "Tắt"
-                  : `${config.sendBeforeMinutes} phút`}
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs text-gray-500">
+                Gửi trước giờ bắt đầu ca
+              </label>
+              <span className={`text-sm font-semibold tabular-nums ${config.sendBeforeMinutes === 0 ? "text-gray-500" : "text-brand-400"}`}>
+                {config.sendBeforeMinutes === 0 ? "Tắt" : `${config.sendBeforeMinutes} phút`}
               </span>
             </div>
-            <p className="text-xs text-gray-600 mt-1">
-              Đặt 0 để tắt nhắc trước ca
-            </p>
+            <input
+              type="range"
+              min={0}
+              max={120}
+              step={5}
+              value={config.sendBeforeMinutes}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, sendBeforeMinutes: Number(e.target.value) }))
+              }
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-brand-500 bg-gray-700"
+            />
+            <div className="flex justify-between text-[11px] text-gray-600 mt-1.5">
+              <span>Tắt</span>
+              <span>30 phút</span>
+              <span>1 giờ</span>
+              <span>2 giờ</span>
+            </div>
           </div>
         </div>
 
-        {/* Save */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
-        >
-          {saving ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          Lưu cấu hình
-        </button>
+        {/* Save button */}
+        <div className="flex items-center justify-between pt-1">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+          >
+            {saving ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Lưu cấu hình
+          </button>
 
-        {config.updatedBy && (
-          <p className="text-xs text-gray-600">
-            Cập nhật lần cuối bởi: @{config.updatedBy}
-          </p>
-        )}
+          {config.updatedBy && (
+            <p className="text-xs text-gray-600">
+              Cập nhật bởi <span className="text-gray-500">@{config.updatedBy}</span>
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
