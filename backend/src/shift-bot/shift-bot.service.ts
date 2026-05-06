@@ -16,9 +16,9 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
   private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
 
   onModuleInit() {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = process.env.SHIFT_BOT_TOKEN;
     if (!token) {
-      this.logger.warn("TELEGRAM_BOT_TOKEN not set — ShiftBot disabled");
+      this.logger.warn("SHIFT_BOT_TOKEN not set — ShiftBot disabled");
       return;
     }
 
@@ -141,7 +141,7 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
         : Promise.resolve(),
       this.telegramChatId
         ? axios.post(
-            `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+            `https://api.telegram.org/bot${process.env.SHIFT_BOT_TOKEN}/sendMessage`,
             { chat_id: this.telegramChatId, text: summary }
           )
         : Promise.resolve(),
