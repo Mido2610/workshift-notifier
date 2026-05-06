@@ -29,4 +29,20 @@ export class CalendarController {
     const events = await this.calendarService.getEventsForMonth(y, m);
     return { year: y, month: m, events };
   }
+
+  /** GET /api/calendar/people — danh sách tên duy nhất trong tháng hiện tại */
+  @Get("people")
+  async getPeople() {
+    const now = moment.tz(VIETNAM_TZ);
+    const events = await this.calendarService.getEventsForMonth(now.year(), now.month() + 1);
+    const seen = new Set<string>();
+    const people: { summary: string; displayName: string; githubLogin?: string }[] = [];
+    for (const e of events) {
+      const key = e.githubLogin || e.summary;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      people.push({ summary: e.summary, displayName: e.displayName || e.summary, githubLogin: e.githubLogin });
+    }
+    return people.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
 }

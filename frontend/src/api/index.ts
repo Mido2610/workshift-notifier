@@ -17,6 +17,9 @@ export const getMe = () => api.get("/api/auth/me").then((r) => r.data);
 export const getCalendarMonth = (year: number, month: number) =>
   api.get(`/api/calendar/month?year=${year}&month=${month}`).then((r) => r.data);
 
+export const getCalendarPeople = () =>
+  api.get("/api/calendar/people").then((r) => r.data);
+
 export const getCalendarDay = (date: string) =>
   api.get(`/api/calendar/events?date=${date}`).then((r) => r.data);
 
