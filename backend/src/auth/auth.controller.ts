@@ -55,6 +55,23 @@ export class AuthController {
     }
   }
 
+  @Get("dev-login")
+  devLogin(@Query("login") login: string, @Res() res: Response) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).send("Not available in production");
+    }
+    const user = {
+      id: 0,
+      login: login || "Mido2610",
+      email: "dev@localhost",
+      name: login || "Mido2610",
+      avatar_url: "",
+    };
+    const token = this.authService.signToken(user);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
+    return res.redirect(`${frontendUrl}/dashboard?token=${token}`);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   getMe(@Request() req: any) {
