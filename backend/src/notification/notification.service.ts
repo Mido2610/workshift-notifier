@@ -1,10 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
-import * as moment from "moment-timezone";
 import { NotificationLogModel } from "../models/notification-log.schema";
 import { CalendarEvent } from "../calendar/calendar.service";
-import { USER_FULL_NAMES, VIETNAM_TZ } from "../constants";
-import { NotifyConfigService, DEFAULT_MESSAGE_TEMPLATE } from "../notify-config/notify-config.service";
 
 export type TriggerType = "scheduler" | "scheduler-end" | "manual";
 
@@ -14,31 +11,23 @@ export class NotificationService {
   private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
   private readonly slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || "";
 
-  constructor(
-    private readonly configService: NotifyConfigService,
-  ) {}
-
+  /** Gửi message cho một event (scheduler dùng) */
   async sendForEvent(
     event: CalendarEvent,
     triggerType: TriggerType,
-    templateOverride?: string,
+    message: string,
   ): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
+    if (!message) return { sent: false, skipped: true };
+
     const existing = await NotificationLogModel.findOne({
       date: event.date,
       calendarEventId: event.id,
       triggerType,
       status: "sent",
     });
+    if (existing) return { sent: false, skipped: true };
 
-    if (existing) {
-      return { sent: false, skipped: true };
-    }
-
-    const config = await this.configService.getConfig();
-    const template = templateOverride || config.messageTemplate || DEFAULT_MESSAGE_TEMPLATE;
-    const message = this.buildMessage(event, template);
     const githubLogin = event.githubLogin || "";
-
     const MAX_RETRIES = 3;
     let lastError: string | undefined;
 
@@ -48,10 +37,8 @@ export class NotificationService {
         lastError = undefined;
         break;
       } catch (err: any) {
-        lastError = err?.response?.data?.description || err?.message || "Unknown error";
-        if (attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, 2000 * attempt));
-        }
+        lastError = err?.message || "Unknown error";
+        if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, 2000 * attempt));
       }
     }
 
@@ -71,13 +58,10 @@ export class NotificationService {
       { upsert: true }
     );
 
-    if (lastError) {
-      return { sent: false, error: lastError };
-    }
-    return { sent: true };
+    return lastError ? { sent: false, error: lastError } : { sent: true };
   }
 
-  /** Gửi thẳng message từ FE lên Slack + Telegram */
+  /** Gửi thẳng message từ FE */
   async sendMessage(githubLogin: string, message: string): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.sendToChannel(githubLogin, message);
@@ -87,10 +71,8 @@ export class NotificationService {
     }
   }
 
-  /** Gửi vào Slack channel (webhook) + Telegram — giống csNotify */
   private async sendToChannel(githubLogin: string, message: string): Promise<void> {
     const slackText = `${githubLogin}\n${message}`;
-
     await Promise.all([
       this.slackWebhookUrl
         ? axios.post(this.slackWebhookUrl, { text: slackText })
@@ -104,50 +86,13 @@ export class NotificationService {
     ]);
   }
 
-  private buildMessage(event: CalendarEvent, template: string): string {
-    const displayName =
-      event.githubLogin && USER_FULL_NAMES[event.githubLogin]
-        ? USER_FULL_NAMES[event.githubLogin]
-        : event.summary;
-
-    const dateFormatted = moment
-      .tz(event.date, VIETNAM_TZ)
-      .locale("vi")
-      .format("dddd, DD/MM/YYYY");
-
-    let timeRange = "Cả ngày";
-    if (event.startDateTime && event.endDateTime) {
-      const s = moment.tz(event.startDateTime, VIETNAM_TZ).format("HH:mm");
-      const e = moment.tz(event.endDateTime, VIETNAM_TZ).format("HH:mm");
-      timeRange = `${s} – ${e}`;
-    }
-
-    return template
-      .replace(/\{name\}/g, displayName)
-      .replace(/\{date\}/g, dateFormatted)
-      .replace(/\{time\}/g, timeRange)
-      .replace(/\{summary\}/g, event.summary);
-  }
-
   async getLogs(page = 1, limit = 20) {
     const skip = (page - 1) * limit;
     const [items, total] = await Promise.all([
-      NotificationLogModel.find()
-        .sort({ sentAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      NotificationLogModel.find().sort({ sentAt: -1 }).skip(skip).limit(limit).lean(),
       NotificationLogModel.countDocuments(),
     ]);
-    return {
-      items,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   async getStats() {
@@ -159,3 +104,4 @@ export class NotificationService {
     return { sent, failed, total };
   }
 }
+

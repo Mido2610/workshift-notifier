@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Settings, Save, RefreshCw, Power, Clock, Bell, Calendar, User } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import moment from "moment";
+import { Settings, Save, RefreshCw, Power, Clock, Bell, Calendar, User, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import { getConfig, saveConfig } from "../api";
-import type { NotifyConfig } from "../types";
+import { getConfig, saveConfig, getCalendarMonth } from "../api";
+import type { NotifyConfig, CalendarEvent } from "../types";
 
 function Toggle({
   checked,
@@ -38,12 +39,17 @@ export default function Config() {
     sendBeforeMinutes: 30,
     sendAtDayStart: true,
     dayStartTime: "07:30",
+    startShiftMessage: "",
     sendAtShiftEnd: false,
+    endShiftMessage: "",
     activeDays: [1, 2, 3, 4, 5],
     ownerCalendarName: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [matchedDates, setMatchedDates] = useState<CalendarEvent[]>([]);
+  const [checking, setChecking] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     getConfig()
@@ -51,6 +57,28 @@ export default function Config() {
       .catch(() => toast.error("Không tải được cấu hình"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const name = config.ownerCalendarName.trim();
+    if (!name) { setMatchedDates([]); return; }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setChecking(true);
+      try {
+        const now = moment();
+        const events = await getCalendarMonth(now.year(), now.month() + 1);
+        const matched = (events as CalendarEvent[]).filter((e) =>
+          e.summary.toLowerCase().includes(name.toLowerCase())
+        );
+        setMatchedDates(matched);
+      } catch {
+        setMatchedDates([]);
+      } finally {
+        setChecking(false);
+      }
+    }, 600);
+  }, [config.ownerCalendarName]);
 
   const handleSave = async () => {
     if (!config.ownerCalendarName.trim()) {
@@ -93,16 +121,43 @@ export default function Config() {
             <h3 className="text-sm font-medium text-gray-200">Tên trong Google Calendar</h3>
             <span className="text-xs text-red-400">* bắt buộc</span>
           </div>
-          <input
-            type="text"
-            value={config.ownerCalendarName}
-            onChange={(e) => setConfig((c) => ({ ...c, ownerCalendarName: e.target.value.trim() }))}
-            placeholder="vd: Nguyễn Tuấn Kiệt"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={config.ownerCalendarName}
+              onChange={(e) => setConfig((c) => ({ ...c, ownerCalendarName: e.target.value }))}
+              placeholder="vd: Nguyễn Tuấn Kiệt"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+            {checking && (
+              <RefreshCw className="absolute right-3 top-2.5 w-4 h-4 text-gray-500 animate-spin" />
+            )}
+          </div>
           <p className="text-xs text-gray-600">
             Nhập tên như hiển thị trong Google Calendar. Scheduler chỉ gửi khi tên này có ca.
           </p>
+          {!checking && config.ownerCalendarName.trim() && (
+            <div className="mt-1">
+              {matchedDates.length === 0 ? (
+                <p className="text-xs text-yellow-500">Không tìm thấy ca nào trong tháng này</p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-xs text-green-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Tìm thấy {matchedDates.length} ca trong tháng này
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {matchedDates.map((e) => (
+                      <span key={e.id} className="text-[11px] bg-green-500/10 text-green-400 border border-green-500/20 rounded px-2 py-0.5">
+                        {moment(e.date).format("DD/MM")}
+                        {e.startDateTime && ` ${moment(e.startDateTime).format("HH:mm")}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Auto send toggle */}
@@ -241,8 +296,23 @@ export default function Config() {
           </div>
         </div>
 
+        {/* Start shift message */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <Bell className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-medium text-gray-200">Tin nhắn đầu ca</h3>
+          </div>
+          <textarea
+            value={config.startShiftMessage}
+            onChange={(e) => setConfig((c) => ({ ...c, startShiftMessage: e.target.value }))}
+            placeholder="Nhập nội dung tự động gửi lúc đầu ca..."
+            rows={3}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
+          />
+        </div>
+
         {/* End shift */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${config.sendAtShiftEnd ? "bg-blue-500/15" : "bg-gray-800"}`}>
@@ -258,6 +328,15 @@ export default function Config() {
               onChange={() => setConfig((c) => ({ ...c, sendAtShiftEnd: !c.sendAtShiftEnd }))}
             />
           </div>
+          {config.sendAtShiftEnd && (
+            <textarea
+              value={config.endShiftMessage}
+              onChange={(e) => setConfig((c) => ({ ...c, endShiftMessage: e.target.value }))}
+              placeholder="Nhập nội dung tự động gửi lúc cuối ca..."
+              rows={3}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
+            />
+          )}
         </div>
 
         {/* Save */}

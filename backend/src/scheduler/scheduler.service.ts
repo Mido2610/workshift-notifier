@@ -16,29 +16,31 @@ export class SchedulerService {
     private readonly notifyConfigService: NotifyConfigService
   ) {}
 
-  /**
-   * Chạy mỗi phút.
-   * Kiểm tra xem có event nào cần gửi thông báo không.
-   */
   @Cron("* * * * *")
   async checkAndNotify() {
     const config = await this.notifyConfigService.getConfig();
     if (!config.enabled) return;
-    if (!config.ownerCalendarName) return; // bắt buộc phải cấu hình tên trong Calendar
+    if (!config.ownerCalendarName) return;
 
     const now = moment.tz(VIETNAM_TZ);
-    const dayOfWeek = now.day(); // 0=CN, 1=T2, ..., 6=T7
+    const dayOfWeek = now.day();
     if (config.activeDays.length > 0 && !config.activeDays.includes(dayOfWeek)) return;
 
     const today = now.format("YYYY-MM-DD");
     const tomorrow = now.clone().add(1, "day").format("YYYY-MM-DD");
+    const ownerName = config.ownerCalendarName.toLowerCase();
 
-    // Gửi đầu ngày (dayStartTime ± 1 phút)
-    if (config.sendAtDayStart) {
+    // Gửi đầu ngày
+    if (config.sendAtDayStart && config.startShiftMessage) {
       const [hh, mm] = config.dayStartTime.split(":").map(Number);
       const dayStartMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
       if (Math.abs(now.diff(dayStartMoment, "minutes")) <= 1) {
-        await this.sendForDay(today, "day-start", config.ownerCalendarName);
+        const events = await this.calendarService.getEventsForDate(today);
+        const ownerEvents = events.filter(e => e.summary.toLowerCase().includes(ownerName));
+        for (const event of ownerEvents) {
+          const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
+          if (result.sent) this.logger.log(`[Scheduler] Sent day-start: "${event.summary}"`);
+        }
       }
     }
 
@@ -47,66 +49,33 @@ export class SchedulerService {
       this.calendarService.getEventsForDate(tomorrow),
     ]);
 
-    // Chỉ lấy event của owner
-    const ownerName = config.ownerCalendarName.toLowerCase();
     const todayEvents = allToday.filter(e => e.summary.toLowerCase().includes(ownerName));
     const tomorrowEvents = allTomorrow.filter(e => e.summary.toLowerCase().includes(ownerName));
 
-    // Gửi trước ca (sendBeforeMinutes trước startDateTime)
-    if (config.sendBeforeMinutes > 0) {
+    // Nhắc trước ca
+    if (config.sendBeforeMinutes > 0 && config.startShiftMessage) {
       for (const event of [...todayEvents, ...tomorrowEvents]) {
         if (!event.startDateTime) continue;
-        const startMoment = moment.tz(event.startDateTime, VIETNAM_TZ);
-        const notifyAt = startMoment.clone().subtract(config.sendBeforeMinutes, "minutes");
+        const notifyAt = moment.tz(event.startDateTime, VIETNAM_TZ).subtract(config.sendBeforeMinutes, "minutes");
         if (Math.abs(now.diff(notifyAt, "minutes")) <= 1) {
-          const result = await this.notificationService.sendForEvent(event, "scheduler");
-          if (result.sent) {
-            this.logger.log(`[Scheduler] Sent pre-shift: "${event.summary}"`);
-          } else if (result.skipped) {
-            this.logger.verbose(`[Scheduler] Skipped pre-shift: "${event.summary}"`);
-          } else {
-            this.logger.error(`[Scheduler] Failed pre-shift: "${event.summary}" — ${result.error}`);
-          }
+          const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
+          if (result.sent) this.logger.log(`[Scheduler] Sent pre-shift: "${event.summary}"`);
+          else if (result.error) this.logger.error(`[Scheduler] Failed pre-shift: "${event.summary}" — ${result.error}`);
         }
       }
     }
 
-    // Gửi cuối ca (tại endDateTime)
-    if (config.sendAtShiftEnd && config.endShiftMessageTemplate) {
+    // Gửi cuối ca
+    if (config.sendAtShiftEnd && config.endShiftMessage) {
       for (const event of todayEvents) {
         if (!event.endDateTime) continue;
         const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);
         if (Math.abs(now.diff(endMoment, "minutes")) <= 1) {
-          const result = await this.notificationService.sendForEvent(
-            event,
-            "scheduler-end",
-            config.endShiftMessageTemplate,
-          );
-          if (result.sent) {
-            this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
-          } else if (result.skipped) {
-            this.logger.verbose(`[Scheduler] Skipped end-shift: "${event.summary}"`);
-          } else {
-            this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
-          }
+          const result = await this.notificationService.sendForEvent(event, "scheduler-end", config.endShiftMessage);
+          if (result.sent) this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
+          else if (result.error) this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
         }
       }
     }
-  }
-
-  private async sendForDay(date: string, label: string, ownerLogin: string) {
-    const events = await this.calendarService.getEventsForDate(date);
-    const ownerEvents = events.filter(e => e.summary.toLowerCase().includes(ownerLogin.toLowerCase()));
-    let sent = 0;
-    for (const event of ownerEvents) {
-      const result = await this.notificationService.sendForEvent(
-        event,
-        "scheduler"
-      );
-      if (result.sent) sent++;
-    }
-    this.logger.log(
-      `[Scheduler] ${label} for ${date}: sent=${sent}/${ownerEvents.length}`
-    );
   }
 }
