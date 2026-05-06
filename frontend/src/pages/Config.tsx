@@ -80,10 +80,16 @@ export default function Config() {
         const { events: rawEvents } = await getCalendarMonth(now.year(), now.month() + 1);
         const events: CalendarEvent[] = rawEvents;
         const lower = name.toLowerCase();
-        setMatchedDates(events.filter(e =>
+        const matched = events.filter(e =>
           e.summary.toLowerCase().includes(lower) ||
           (e.displayName || "").toLowerCase().includes(lower)
-        ));
+        );
+        setMatchedDates(matched);
+        // Tự động set activeDays từ các ngày có ca trong lịch
+        const daysOfWeek = [...new Set(matched.map(e => moment(e.date).day()))].sort();
+        if (daysOfWeek.length > 0) {
+          setConfig(c => ({ ...c, activeDays: daysOfWeek }));
+        }
       } catch {
         setMatchedDates([]);
       }
