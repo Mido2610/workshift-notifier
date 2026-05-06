@@ -77,8 +77,13 @@ export default function Config() {
     debounceRef.current = setTimeout(async () => {
       try {
         const now = moment();
-        const events: CalendarEvent[] = await getCalendarMonth(now.year(), now.month() + 1);
-        setMatchedDates(events.filter(e => e.summary.toLowerCase().includes(name.toLowerCase())));
+        const { events: rawEvents } = await getCalendarMonth(now.year(), now.month() + 1);
+        const events: CalendarEvent[] = rawEvents;
+        const lower = name.toLowerCase();
+        setMatchedDates(events.filter(e =>
+          e.summary.toLowerCase().includes(lower) ||
+          (e.displayName || "").toLowerCase().includes(lower)
+        ));
       } catch {
         setMatchedDates([]);
       }

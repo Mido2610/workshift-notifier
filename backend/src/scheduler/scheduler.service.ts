@@ -29,6 +29,10 @@ export class SchedulerService {
     const today = now.format("YYYY-MM-DD");
     const tomorrow = now.clone().add(1, "day").format("YYYY-MM-DD");
     const ownerName = config.ownerCalendarName.toLowerCase();
+    const matchesOwner = (e: { summary: string; displayName?: string }) => {
+      const lower = ownerName;
+      return e.summary.toLowerCase().includes(lower) || (e.displayName || "").toLowerCase().includes(lower);
+    };
 
     // Gửi đầu ngày
     if (config.sendAtDayStart && config.startShiftMessage) {
@@ -36,7 +40,7 @@ export class SchedulerService {
       const dayStartMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
       if (Math.abs(now.diff(dayStartMoment, "minutes")) <= 1) {
         const events = await this.calendarService.getEventsForDate(today);
-        const ownerEvents = events.filter(e => e.summary.toLowerCase().includes(ownerName));
+        const ownerEvents = events.filter(matchesOwner);
         for (const event of ownerEvents) {
           const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
           if (result.sent) this.logger.log(`[Scheduler] Sent day-start: "${event.summary}"`);
@@ -49,8 +53,8 @@ export class SchedulerService {
       this.calendarService.getEventsForDate(tomorrow),
     ]);
 
-    const todayEvents = allToday.filter(e => e.summary.toLowerCase().includes(ownerName));
-    const tomorrowEvents = allTomorrow.filter(e => e.summary.toLowerCase().includes(ownerName));
+    const todayEvents = allToday.filter(matchesOwner);
+    const tomorrowEvents = allTomorrow.filter(matchesOwner);
 
     // Nhắc trước ca
     if (config.sendBeforeMinutes > 0 && config.startShiftMessage) {
