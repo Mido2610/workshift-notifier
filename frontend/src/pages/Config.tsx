@@ -47,8 +47,9 @@ export default function Config() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calendarPeople, setCalendarPeople] = useState<{ displayName: string; githubLogin: string }[]>([]);
   const [matchedDates, setMatchedDates] = useState<CalendarEvent[]>([]);
-  const [checking, setChecking] = useState(false);
+  const [loadingPeople, setLoadingPeople] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -58,26 +59,40 @@ export default function Config() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Fetch danh sách người trong calendar tháng này (chỉ lấy ca trực, bỏ event không phải người)
+  useEffect(() => {
+    setLoadingPeople(true);
+    const now = moment();
+    getCalendarMonth(now.year(), now.month() + 1)
+      .then((events: CalendarEvent[]) => {
+        const seen = new Set<string>();
+        const people: { displayName: string; githubLogin: string }[] = [];
+        for (const e of events) {
+          if (!e.githubLogin) continue; // bỏ event không phải ca trực
+          if (seen.has(e.githubLogin)) continue;
+          seen.add(e.githubLogin);
+          people.push({ displayName: e.displayName || e.summary, githubLogin: e.githubLogin });
+        }
+        setCalendarPeople(people.sort((a, b) => a.displayName.localeCompare(b.displayName)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPeople(false));
+  }, []);
+
+  // Khi chọn tên → hiển thị các ngày có ca
   useEffect(() => {
     const name = config.ownerCalendarName.trim();
     if (!name) { setMatchedDates([]); return; }
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      setChecking(true);
       try {
         const now = moment();
-        const events = await getCalendarMonth(now.year(), now.month() + 1);
-        const matched = (events as CalendarEvent[]).filter((e) =>
-          e.summary.toLowerCase().includes(name.toLowerCase())
-        );
-        setMatchedDates(matched);
+        const events: CalendarEvent[] = await getCalendarMonth(now.year(), now.month() + 1);
+        setMatchedDates(events.filter(e => e.summary.toLowerCase().includes(name.toLowerCase())));
       } catch {
         setMatchedDates([]);
-      } finally {
-        setChecking(false);
       }
-    }, 600);
+    }, 300);
   }, [config.ownerCalendarName]);
 
   const handleSave = async () => {
@@ -114,37 +129,35 @@ export default function Config() {
 
       <div className="space-y-3">
 
-        {/* GitHub Username */}
+        {/* Tên trong calendar */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-3">
             <User className="w-4 h-4 text-gray-400" />
             <h3 className="text-sm font-medium text-gray-200">Tên trong Google Calendar</h3>
             <span className="text-xs text-red-400">* bắt buộc</span>
+            {loadingPeople && <RefreshCw className="w-3 h-3 text-gray-500 animate-spin" />}
           </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={config.ownerCalendarName}
-              onChange={(e) => setConfig((c) => ({ ...c, ownerCalendarName: e.target.value }))}
-              placeholder="vd: Nguyễn Tuấn Kiệt"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500"
-            />
-            {checking && (
-              <RefreshCw className="absolute right-3 top-2.5 w-4 h-4 text-gray-500 animate-spin" />
-            )}
-          </div>
-          <p className="text-xs text-gray-600">
-            Nhập tên như hiển thị trong Google Calendar. Scheduler chỉ gửi khi tên này có ca.
-          </p>
-          {!checking && config.ownerCalendarName.trim() && (
-            <div className="mt-1">
+          <select
+            value={config.ownerCalendarName}
+            onChange={(e) => setConfig((c) => ({ ...c, ownerCalendarName: e.target.value }))}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500"
+          >
+            <option value="">-- Chọn tên của bạn --</option>
+            {calendarPeople.map((p) => (
+              <option key={p.githubLogin} value={p.displayName}>
+                {p.displayName}
+              </option>
+            ))}
+          </select>
+          {config.ownerCalendarName && (
+            <div>
               {matchedDates.length === 0 ? (
                 <p className="text-xs text-yellow-500">Không tìm thấy ca nào trong tháng này</p>
               ) : (
                 <div className="space-y-1">
                   <p className="text-xs text-green-400 flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
-                    Tìm thấy {matchedDates.length} ca trong tháng này
+                    {matchedDates.length} ca trong tháng này
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {matchedDates.map((e) => (
