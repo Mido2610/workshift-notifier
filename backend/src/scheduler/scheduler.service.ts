@@ -26,6 +26,9 @@ export class SchedulerService {
     if (!config.enabled) return;
 
     const now = moment.tz(VIETNAM_TZ);
+    const dayOfWeek = now.day(); // 0=CN, 1=T2, ..., 6=T7
+    if (config.activeDays.length > 0 && !config.activeDays.includes(dayOfWeek)) return;
+
     const today = now.format("YYYY-MM-DD");
     const tomorrow = now.clone().add(1, "day").format("YYYY-MM-DD");
 
@@ -38,28 +41,47 @@ export class SchedulerService {
       }
     }
 
+    const [todayEvents, tomorrowEvents] = await Promise.all([
+      this.calendarService.getEventsForDate(today),
+      this.calendarService.getEventsForDate(tomorrow),
+    ]);
+
     // Gửi trước ca (sendBeforeMinutes trước startDateTime)
     if (config.sendBeforeMinutes > 0) {
-      const [todayEvents, tomorrowEvents] = await Promise.all([
-        this.calendarService.getEventsForDate(today),
-        this.calendarService.getEventsForDate(tomorrow),
-      ]);
-
       for (const event of [...todayEvents, ...tomorrowEvents]) {
         if (!event.startDateTime) continue;
         const startMoment = moment.tz(event.startDateTime, VIETNAM_TZ);
         const notifyAt = startMoment.clone().subtract(config.sendBeforeMinutes, "minutes");
         if (Math.abs(now.diff(notifyAt, "minutes")) <= 1) {
+          const result = await this.notificationService.sendForEvent(event, "scheduler");
+          if (result.sent) {
+            this.logger.log(`[Scheduler] Sent pre-shift: "${event.summary}"`);
+          } else if (result.skipped) {
+            this.logger.verbose(`[Scheduler] Skipped pre-shift: "${event.summary}"`);
+          } else {
+            this.logger.error(`[Scheduler] Failed pre-shift: "${event.summary}" — ${result.error}`);
+          }
+        }
+      }
+    }
+
+    // Gửi cuối ca (tại endDateTime)
+    if (config.sendAtShiftEnd && config.endShiftMessageTemplate) {
+      for (const event of todayEvents) {
+        if (!event.endDateTime) continue;
+        const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);
+        if (Math.abs(now.diff(endMoment, "minutes")) <= 1) {
           const result = await this.notificationService.sendForEvent(
             event,
-            "scheduler"
+            "scheduler-end",
+            config.endShiftMessageTemplate,
           );
           if (result.sent) {
-            this.logger.log(`[Scheduler] Sent pre-shift notification: "${event.summary}"`);
+            this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
           } else if (result.skipped) {
-            this.logger.verbose(`[Scheduler] Skipped (already sent): "${event.summary}"`);
+            this.logger.verbose(`[Scheduler] Skipped end-shift: "${event.summary}"`);
           } else {
-            this.logger.error(`[Scheduler] Failed: "${event.summary}" — ${result.error}`);
+            this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
           }
         }
       }

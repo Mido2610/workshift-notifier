@@ -1,11 +1,23 @@
 import { Injectable } from "@nestjs/common";
 import { NotifyConfigModel } from "../models/notify-config.schema";
 
+export const DEFAULT_MESSAGE_TEMPLATE = `🔔 <b>Thông báo lịch trực</b>
+📅 Ngày: {date}
+👤 Người trực: <b>{name}</b>
+⏰ Ca: {time}
+
+<i>Gửi tự động bởi Workshift Notifier</i>`;
+
+
 export interface NotifyConfig {
   enabled: boolean;
   sendBeforeMinutes: number;
   sendAtDayStart: boolean;
   dayStartTime: string;
+  messageTemplate: string;
+  endShiftMessageTemplate: string;
+  sendAtShiftEnd: boolean;
+  activeDays: number[];
   updatedBy?: string;
 }
 
@@ -19,6 +31,10 @@ export class NotifyConfigService {
         sendBeforeMinutes: 30,
         sendAtDayStart: true,
         dayStartTime: "07:30",
+        messageTemplate: "",
+        endShiftMessageTemplate: "",
+        sendAtShiftEnd: false,
+        activeDays: [1, 2, 3, 4, 5],
       };
     }
     return {
@@ -26,6 +42,10 @@ export class NotifyConfigService {
       sendBeforeMinutes: doc.sendBeforeMinutes,
       sendAtDayStart: doc.sendAtDayStart,
       dayStartTime: doc.dayStartTime,
+      messageTemplate: doc.messageTemplate || "",
+      endShiftMessageTemplate: (doc as any).endShiftMessageTemplate || "",
+      sendAtShiftEnd: (doc as any).sendAtShiftEnd ?? false,
+      activeDays: (doc as any).activeDays ?? [1, 2, 3, 4, 5],
       updatedBy: doc.updatedBy,
     };
   }
@@ -44,6 +64,10 @@ export class NotifyConfigService {
       sendBeforeMinutes: updated!.sendBeforeMinutes,
       sendAtDayStart: updated!.sendAtDayStart,
       dayStartTime: updated!.dayStartTime,
+      messageTemplate: updated!.messageTemplate || "",
+      endShiftMessageTemplate: (updated as any).endShiftMessageTemplate || "",
+      sendAtShiftEnd: (updated as any).sendAtShiftEnd ?? false,
+      activeDays: (updated as any).activeDays ?? [1, 2, 3, 4, 5],
       updatedBy: updated!.updatedBy,
     };
   }

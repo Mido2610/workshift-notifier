@@ -3,21 +3,28 @@ import axios from "axios";
 import * as moment from "moment-timezone";
 import { NotificationLogModel } from "../models/notification-log.schema";
 import { CalendarEvent } from "../calendar/calendar.service";
-import { USER_FULL_NAMES, VIETNAM_TZ } from "../constants";
+import { USER_FULL_NAMES, SLACK_USER_ID_MAP, VIETNAM_TZ } from "../constants";
+import { NotifyConfigService, DEFAULT_MESSAGE_TEMPLATE } from "../notify-config/notify-config.service";
 
-export type TriggerType = "scheduler" | "manual";
+export type TriggerType = "scheduler" | "scheduler-end" | "manual";
 
 @Injectable()
 export class NotificationService {
-  private readonly emApiUrl =
-    process.env.EM_API_URL || "http://localhost:8080";
-  private readonly botGithubLogin =
-    process.env.BOT_GITHUB_LOGIN || "mmenutech";
+  private readonly telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || "";
+  private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
+  private readonly slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || "";
+  private readonly slackBotToken = process.env.SLACK_BOT_TOKEN || "";
+  private readonly botGithubLogin = process.env.BOT_GITHUB_LOGIN || "mmenutech";
+
+  constructor(
+    private readonly configService: NotifyConfigService,
+  ) {}
 
   /** Gửi thông báo cho một event. Trả về true nếu gửi, false nếu skip. */
   async sendForEvent(
     event: CalendarEvent,
-    triggerType: TriggerType
+    triggerType: TriggerType,
+    templateOverride?: string,
   ): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
     // Idempotency: kiểm tra đã gửi thành công chưa
     const existing = await NotificationLogModel.findOne({
@@ -31,7 +38,9 @@ export class NotificationService {
       return { sent: false, skipped: true };
     }
 
-    const message = this.buildMessage(event);
+    const config = await this.configService.getConfig();
+    const template = templateOverride || config.messageTemplate || DEFAULT_MESSAGE_TEMPLATE;
+    const message = this.buildMessage(event, template);
     const githubLogin = event.githubLogin || this.botGithubLogin;
 
     const MAX_RETRIES = 3;
@@ -39,15 +48,12 @@ export class NotificationService {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        await axios.post(`${this.emApiUrl}/api/cs-notify/workshift/submit-message`, {
-          githubLogin,
-          message,
-        });
+        // await this.sendTelegram(message); // tạm comment — chưa gửi Telegram
+        await this.sendSlackDM(githubLogin, message);
         lastError = undefined;
         break;
       } catch (err: any) {
-        lastError =
-          err?.response?.data?.message || err?.message || "Unknown error";
+        lastError = err?.response?.data?.description || err?.message || "Unknown error";
         if (attempt < MAX_RETRIES) {
           await new Promise((r) => setTimeout(r, 2000 * attempt));
         }
@@ -77,7 +83,61 @@ export class NotificationService {
     return { sent: true };
   }
 
-  private buildMessage(event: CalendarEvent): string {
+  private async sendTelegram(message: string): Promise<void> {
+    if (!this.telegramBotToken || !this.telegramChatId) {
+      throw new Error("TELEGRAM_BOT_TOKEN hoặc TELEGRAM_CHAT_ID chưa được cấu hình");
+    }
+    await axios.post(
+      `https://api.telegram.org/bot${this.telegramBotToken}/sendMessage`,
+      { chat_id: this.telegramChatId, text: message, parse_mode: "HTML" }
+    );
+  }
+
+  /** Gửi webhook vào channel group (fallback khi không có bot token) */
+  private async sendSlackWebhook(githubLogin: string, message: string): Promise<void> {
+    if (!this.slackWebhookUrl) return;
+    const slackText = `${githubLogin} gửi tin nhắn\n"${message}"`;
+    await axios.post(this.slackWebhookUrl, { text: slackText });
+  }
+
+  /** Gửi DM trực tiếp đến người trực qua Slack Bot API */
+  private async sendSlackDM(githubLogin: string, message: string): Promise<void> {
+    const slackUserId = SLACK_USER_ID_MAP[githubLogin];
+
+    if (!slackUserId || !this.slackBotToken) {
+      // Không có user ID hoặc bot token → fallback về webhook group
+      await this.sendSlackWebhook(githubLogin, message);
+      return;
+    }
+
+    const headers = {
+      Authorization: `Bearer ${this.slackBotToken}`,
+      "Content-Type": "application/json",
+    };
+
+    // Dùng thẳng Slack user ID làm channel — không cần conversations.open
+    const slackMessage = this.htmlToMrkdwn(message);
+    const postRes = await axios.post(
+      "https://slack.com/api/chat.postMessage",
+      { channel: slackUserId, text: slackMessage, mrkdwn: true },
+      { headers }
+    );
+
+    if (!postRes.data.ok) {
+      throw new Error(`chat.postMessage failed: ${postRes.data.error}`);
+    }
+  }
+
+  /** Chuyển HTML cơ bản sang Slack mrkdwn */
+  private htmlToMrkdwn(html: string): string {
+    return html
+      .replace(/<b>(.*?)<\/b>/gi, "*$1*")
+      .replace(/<i>(.*?)<\/i>/gi, "_$1_")
+      .replace(/<code>(.*?)<\/code>/gi, "`$1`")
+      .replace(/<[^>]+>/g, ""); // strip các tag còn lại
+  }
+
+  private buildMessage(event: CalendarEvent, template: string): string {
     const displayName =
       event.githubLogin && USER_FULL_NAMES[event.githubLogin]
         ? USER_FULL_NAMES[event.githubLogin]
@@ -95,14 +155,11 @@ export class NotificationService {
       timeRange = `${s} – ${e}`;
     }
 
-    return [
-      `🔔 <b>Thông báo lịch trực</b>`,
-      `📅 Ngày: ${dateFormatted}`,
-      `👤 Người trực: <b>${displayName}</b>`,
-      `⏰ Ca: ${timeRange}`,
-      ``,
-      `<i>Gửi tự động bởi Workshift Notifier</i>`,
-    ].join("\n");
+    return template
+      .replace(/\{name\}/g, displayName)
+      .replace(/\{date\}/g, dateFormatted)
+      .replace(/\{time\}/g, timeRange)
+      .replace(/\{summary\}/g, event.summary);
   }
 
   async getLogs(page = 1, limit = 20) {

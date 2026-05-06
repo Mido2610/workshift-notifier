@@ -11,6 +11,14 @@ const notifyConfigSchema = new mongoose.Schema(
     sendAtDayStart: { type: Boolean, default: true },
     // Giờ gửi đầu ngày (HH:MM, giờ Việt Nam)
     dayStartTime: { type: String, default: "07:30" },
+    // Template tin nhắn — hỗ trợ biến: {name} {date} {time} {summary}
+    messageTemplate: { type: String, default: "" },
+    // Template tin nhắn cuối ca
+    endShiftMessageTemplate: { type: String, default: "" },
+    // Gửi thông báo khi kết thúc ca
+    sendAtShiftEnd: { type: Boolean, default: false },
+    // Ngày trong tuần được phép gửi (0=CN, 1=T2, ..., 6=T7)
+    activeDays: { type: [Number], default: [1, 2, 3, 4, 5] },
     updatedBy: { type: String },
   },
   { timestamps: true }

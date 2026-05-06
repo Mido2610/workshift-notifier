@@ -5,7 +5,6 @@ import {
   Body,
   Query,
   UseGuards,
-  Request,
 } from "@nestjs/common";
 import { NotificationService } from "./notification.service";
 import { CalendarService } from "../calendar/calendar.service";
@@ -23,7 +22,7 @@ export class NotificationController {
 
   /** POST /api/notification/send-now  { date?: "YYYY-MM-DD" } */
   @Post("send-now")
-  async sendNow(@Body() body: { date?: string }, @Request() req: any) {
+  async sendNow(@Body() body: { date?: string }) {
     const date = body.date || moment.tz(VIETNAM_TZ).format("YYYY-MM-DD");
     const events = await this.calendarService.getEventsForDate(date);
 
