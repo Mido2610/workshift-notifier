@@ -59,19 +59,23 @@ export default function Config() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fetch danh sách người trong calendar tháng này (chỉ lấy ca trực, bỏ event không phải người)
+  // Fetch danh sách tên từ calendar tháng này
   useEffect(() => {
     setLoadingPeople(true);
     const now = moment();
     getCalendarMonth(now.year(), now.month() + 1)
       .then((events: CalendarEvent[]) => {
+        console.log("[Config] calendar events sample:", events.slice(0, 5).map(e => ({ summary: e.summary, displayName: e.displayName, githubLogin: e.githubLogin })));
         const seen = new Set<string>();
         const people: { displayName: string; githubLogin: string }[] = [];
         for (const e of events) {
-          if (!e.githubLogin) continue; // bỏ event không phải ca trực
-          if (seen.has(e.githubLogin)) continue;
-          seen.add(e.githubLogin);
-          people.push({ displayName: e.displayName || e.summary, githubLogin: e.githubLogin });
+          const name = (e.displayName && e.displayName !== e.summary)
+            ? e.displayName
+            : e.summary;
+          const key = e.githubLogin || name;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          people.push({ displayName: name, githubLogin: key });
         }
         setCalendarPeople(people.sort((a, b) => a.displayName.localeCompare(b.displayName)));
       })
