@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CalendarGrid from "../components/CalendarGrid";
-import { getCalendarMonth, getCalendarDay, getStats, sendNow } from "../api";
+import { getCalendarMonth, getCalendarDay, getStats, sendMessage } from "../api";
 import type { CalendarEvent, Stats } from "../types";
 
 export default function Dashboard() {
@@ -22,7 +22,8 @@ export default function Dashboard() {
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingCal, setLoadingCal] = useState(false);
-  const [sendingDate, setSendingDate] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>(
     moment().format("YYYY-MM-DD")
   );
@@ -59,19 +60,18 @@ export default function Dashboard() {
     loadStats();
   }, [loadToday, loadStats]);
 
-  const handleSendNow = async (date?: string) => {
-    const target = date || moment().format("YYYY-MM-DD");
-    setSendingDate(target);
+  const handleSend = async () => {
+    if (!message.trim()) { toast.error("Vui lòng nhập nội dung"); return; }
+    setSending(true);
     try {
-      const res = await sendNow(target);
-      toast.success(
-        `Đã gửi ${res.sent} • Bỏ qua ${res.skipped} • Lỗi ${res.failed}`
-      );
+      await sendMessage(message.trim());
+      toast.success("Đã gửi lên Slack + Telegram");
+      setMessage("");
       loadStats();
     } catch {
       toast.error("Gửi thất bại");
     } finally {
-      setSendingDate(null);
+      setSending(false);
     }
   };
 
@@ -96,18 +96,24 @@ export default function Dashboard() {
             {moment().format("dddd, DD/MM/YYYY")}
           </p>
         </div>
-        <button
-          onClick={() => handleSendNow()}
-          disabled={!!sendingDate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
-        >
-          {sendingDate === moment().format("YYYY-MM-DD") ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-          Gửi hôm nay
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Nhập tin nhắn..."
+            className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 w-60"
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+          >
+            {sending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Gửi
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -186,26 +192,12 @@ export default function Dashboard() {
 
         {/* Selected day */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-gray-200">
-                {selectedDate === moment().format("YYYY-MM-DD")
-                  ? "Hôm nay"
-                  : moment(selectedDate).format("dddd, DD/MM")}
-              </h3>
-            </div>
-            <button
-              onClick={() => handleSendNow(selectedDate)}
-              disabled={!!sendingDate}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {sendingDate === selectedDate ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
-              ) : (
-                <Send className="w-3 h-3" />
-              )}
-              Gửi ngày này
-            </button>
+          <div className="flex items-center mb-4">
+            <h3 className="font-medium text-gray-200">
+              {selectedDate === moment().format("YYYY-MM-DD")
+                ? "Hôm nay"
+                : moment(selectedDate).format("dddd, DD/MM")}
+            </h3>
           </div>
           {selectedEvents.length === 0 ? (
             <p className="text-sm text-gray-600">Không có ca trực</p>

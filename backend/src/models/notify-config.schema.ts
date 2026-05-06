@@ -19,8 +19,8 @@ const notifyConfigSchema = new mongoose.Schema(
     sendAtShiftEnd: { type: Boolean, default: false },
     // Ngày trong tuần được phép gửi (0=CN, 1=T2, ..., 6=T7)
     activeDays: { type: [Number], default: [1, 2, 3, 4, 5] },
-    // GitHub login của chủ app — scheduler chỉ gửi khi login này có ca
-    ownerGithubLogin: { type: String, default: "" },
+    // Tên trong Google Calendar — scheduler chỉ gửi khi tên này có trong event
+    ownerCalendarName: { type: String, default: "" },
     updatedBy: { type: String },
   },
   { timestamps: true }

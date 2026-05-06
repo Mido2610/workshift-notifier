@@ -37,7 +37,7 @@ export interface NotifyConfig {
   dayStartTime: string;
   sendAtShiftEnd: boolean;
   activeDays: number[];
-  ownerGithubLogin: string;
+  ownerCalendarName: string;
   updatedBy?: string;
 }
 

@@ -40,7 +40,7 @@ export default function Config() {
     dayStartTime: "07:30",
     sendAtShiftEnd: false,
     activeDays: [1, 2, 3, 4, 5],
-    ownerGithubLogin: "",
+    ownerCalendarName: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,7 +53,7 @@ export default function Config() {
   }, []);
 
   const handleSave = async () => {
-    if (!config.ownerGithubLogin.trim()) {
+    if (!config.ownerCalendarName.trim()) {
       toast.error("Vui lòng nhập GitHub Username");
       return;
     }
@@ -90,18 +90,18 @@ export default function Config() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-3">
             <User className="w-4 h-4 text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-200">GitHub Username</h3>
+            <h3 className="text-sm font-medium text-gray-200">Tên trong Google Calendar</h3>
             <span className="text-xs text-red-400">* bắt buộc</span>
           </div>
           <input
             type="text"
-            value={config.ownerGithubLogin}
-            onChange={(e) => setConfig((c) => ({ ...c, ownerGithubLogin: e.target.value.trim() }))}
-            placeholder="vd: Mido2610"
+            value={config.ownerCalendarName}
+            onChange={(e) => setConfig((c) => ({ ...c, ownerCalendarName: e.target.value.trim() }))}
+            placeholder="vd: Nguyễn Tuấn Kiệt"
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500"
           />
           <p className="text-xs text-gray-600">
-            Scheduler chỉ gửi thông báo khi GitHub login này có ca trong Google Calendar.
+            Nhập tên như hiển thị trong Google Calendar. Scheduler chỉ gửi khi tên này có ca.
           </p>
         </div>
 
