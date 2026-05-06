@@ -165,6 +165,7 @@ export default function Config() {
                       <span key={e.id} className="text-[11px] bg-green-500/10 text-green-400 border border-green-500/20 rounded px-2 py-0.5">
                         {moment(e.date).format("DD/MM")}
                         {e.startDateTime && ` ${moment(e.startDateTime).format("HH:mm")}`}
+                        {e.endDateTime && `–${moment(e.endDateTime).format("HH:mm")}`}
                       </span>
                     ))}
                   </div>
@@ -338,6 +339,7 @@ export default function Config() {
             rows={3}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
           />
+          <p className="text-xs text-gray-600">Gửi đúng lúc giờ kết thúc ca theo Google Calendar.</p>
         </div>
 
         {/* Save */}
