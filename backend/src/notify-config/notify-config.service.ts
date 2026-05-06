@@ -18,6 +18,7 @@ export interface NotifyConfig {
   endShiftMessageTemplate: string;
   sendAtShiftEnd: boolean;
   activeDays: number[];
+  ownerGithubLogin: string;
   updatedBy?: string;
 }
 
@@ -27,7 +28,7 @@ export class NotifyConfigService {
     const doc = await NotifyConfigModel.findOne({ singleton: "global" }).lean();
     if (!doc) {
       return {
-        enabled: true,
+        enabled: false,
         sendBeforeMinutes: 30,
         sendAtDayStart: true,
         dayStartTime: "07:30",
@@ -35,6 +36,7 @@ export class NotifyConfigService {
         endShiftMessageTemplate: "",
         sendAtShiftEnd: false,
         activeDays: [1, 2, 3, 4, 5],
+        ownerGithubLogin: "",
       };
     }
     return {
@@ -46,6 +48,7 @@ export class NotifyConfigService {
       endShiftMessageTemplate: (doc as any).endShiftMessageTemplate || "",
       sendAtShiftEnd: (doc as any).sendAtShiftEnd ?? false,
       activeDays: (doc as any).activeDays ?? [1, 2, 3, 4, 5],
+      ownerGithubLogin: (doc as any).ownerGithubLogin || "",
       updatedBy: doc.updatedBy,
     };
   }
@@ -68,6 +71,7 @@ export class NotifyConfigService {
       endShiftMessageTemplate: (updated as any).endShiftMessageTemplate || "",
       sendAtShiftEnd: (updated as any).sendAtShiftEnd ?? false,
       activeDays: (updated as any).activeDays ?? [1, 2, 3, 4, 5],
+      ownerGithubLogin: (updated as any).ownerGithubLogin || "",
       updatedBy: updated!.updatedBy,
     };
   }

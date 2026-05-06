@@ -35,10 +35,9 @@ export interface NotifyConfig {
   sendBeforeMinutes: number;
   sendAtDayStart: boolean;
   dayStartTime: string;
-  messageTemplate: string;
-  endShiftMessageTemplate: string;
   sendAtShiftEnd: boolean;
   activeDays: number[];
+  ownerGithubLogin: string;
   updatedBy?: string;
 }
 

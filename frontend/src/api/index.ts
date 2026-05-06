@@ -21,8 +21,8 @@ export const getCalendarDay = (date: string) =>
   api.get(`/api/calendar/events?date=${date}`).then((r) => r.data);
 
 // ---------- Notification ----------
-export const sendNow = (date?: string) =>
-  api.post("/api/notification/send-now", { date }).then((r) => r.data);
+export const sendMessage = (message: string) =>
+  api.post("/api/notification/send-message", { message }).then((r) => r.data);
 
 export const getLogs = (page = 1, limit = 20) =>
   api.get(`/api/notification/logs?page=${page}&limit=${limit}`).then((r) => r.data);

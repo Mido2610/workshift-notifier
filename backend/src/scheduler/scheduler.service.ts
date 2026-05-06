@@ -24,6 +24,7 @@ export class SchedulerService {
   async checkAndNotify() {
     const config = await this.notifyConfigService.getConfig();
     if (!config.enabled) return;
+    if (!config.ownerGithubLogin) return; // bắt buộc phải cấu hình GitHub Username
 
     const now = moment.tz(VIETNAM_TZ);
     const dayOfWeek = now.day(); // 0=CN, 1=T2, ..., 6=T7
@@ -37,14 +38,18 @@ export class SchedulerService {
       const [hh, mm] = config.dayStartTime.split(":").map(Number);
       const dayStartMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
       if (Math.abs(now.diff(dayStartMoment, "minutes")) <= 1) {
-        await this.sendForDay(today, "day-start");
+        await this.sendForDay(today, "day-start", config.ownerGithubLogin);
       }
     }
 
-    const [todayEvents, tomorrowEvents] = await Promise.all([
+    const [allToday, allTomorrow] = await Promise.all([
       this.calendarService.getEventsForDate(today),
       this.calendarService.getEventsForDate(tomorrow),
     ]);
+
+    // Chỉ lấy event của owner
+    const todayEvents = allToday.filter(e => e.githubLogin === config.ownerGithubLogin);
+    const tomorrowEvents = allTomorrow.filter(e => e.githubLogin === config.ownerGithubLogin);
 
     // Gửi trước ca (sendBeforeMinutes trước startDateTime)
     if (config.sendBeforeMinutes > 0) {
@@ -88,10 +93,11 @@ export class SchedulerService {
     }
   }
 
-  private async sendForDay(date: string, label: string) {
+  private async sendForDay(date: string, label: string, ownerLogin: string) {
     const events = await this.calendarService.getEventsForDate(date);
+    const ownerEvents = events.filter(e => e.githubLogin === ownerLogin);
     let sent = 0;
-    for (const event of events) {
+    for (const event of ownerEvents) {
       const result = await this.notificationService.sendForEvent(
         event,
         "scheduler"
@@ -99,7 +105,7 @@ export class SchedulerService {
       if (result.sent) sent++;
     }
     this.logger.log(
-      `[Scheduler] ${label} for ${date}: sent=${sent}/${events.length}`
+      `[Scheduler] ${label} for ${date}: sent=${sent}/${ownerEvents.length}`
     );
   }
 }

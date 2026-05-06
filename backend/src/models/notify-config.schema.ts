@@ -4,7 +4,7 @@ const notifyConfigSchema = new mongoose.Schema(
   {
     // singleton – luôn chỉ có 1 bản ghi config
     singleton: { type: String, default: "global", unique: true },
-    enabled: { type: Boolean, default: true },
+    enabled: { type: Boolean, default: false },
     // Gửi trước ca bao nhiêu phút (0 = gửi đúng giờ bắt đầu)
     sendBeforeMinutes: { type: Number, default: 30 },
     // Gửi thông báo đầu ngày
@@ -19,6 +19,8 @@ const notifyConfigSchema = new mongoose.Schema(
     sendAtShiftEnd: { type: Boolean, default: false },
     // Ngày trong tuần được phép gửi (0=CN, 1=T2, ..., 6=T7)
     activeDays: { type: [Number], default: [1, 2, 3, 4, 5] },
+    // GitHub login của chủ app — scheduler chỉ gửi khi login này có ca
+    ownerGithubLogin: { type: String, default: "" },
     updatedBy: { type: String },
   },
   { timestamps: true }
