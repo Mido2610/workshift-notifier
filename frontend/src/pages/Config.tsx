@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import moment from "moment";
-import { Settings, Save, RefreshCw, Power, Clock, Bell, Calendar, User, CheckCircle } from "lucide-react";
+import { Settings, Save, RefreshCw, Power, Clock, Bell, Calendar, User, CheckCircle, MessageCircle, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 import { getConfig, saveConfig, getCalendarMonth, getCalendarPeople } from "../api";
 import type { NotifyConfig, CalendarEvent } from "../types";
@@ -130,6 +130,25 @@ export default function Config() {
       </div>
 
       <div className="space-y-3">
+
+        {/* ShiftBot Telegram */}
+        <a
+          href="https://t.me/workshift_notifier_bot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between bg-[#229ED9]/10 border border-[#229ED9]/30 hover:border-[#229ED9]/60 rounded-xl p-5 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#229ED9]/20 flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-[#229ED9]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-200">ShiftBot — Ghi nhận ca trực</p>
+              <p className="text-xs text-gray-500 mt-0.5">@workshift_notifier_bot · Nhắn /endshift để kết ca</p>
+            </div>
+          </div>
+          <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-[#229ED9] transition-colors" />
+        </a>
 
         {/* Tên trong calendar */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
