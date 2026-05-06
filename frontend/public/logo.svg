@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#0c2340"/>
+    </linearGradient>
+    <linearGradient id="bell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="clock" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow ring -->
+  <rect width="512" height="512" rx="110" fill="none" stroke="#0ea5e9" stroke-width="1.5" opacity="0.15"/>
+
+  <!-- Bell body -->
+  <g filter="url(#glow)">
+    <path d="M256 108 C195 108 152 155 152 218 L152 290 L128 314 L128 330 L384 330 L384 314 L360 290 L360 218 C360 155 317 108 256 108 Z"
+          fill="url(#bell)" opacity="0.95"/>
+    <!-- Bell bottom clapper -->
+    <ellipse cx="256" cy="348" rx="30" ry="14" fill="url(#bell)" opacity="0.9"/>
+  </g>
+
+  <!-- Bell highlight -->
+  <path d="M230 130 C210 145 192 168 188 200" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.2"/>
+
+  <!-- Clock circle (top right of bell) -->
+  <circle cx="360" cy="152" r="68" fill="#0f172a" stroke="#0ea5e9" stroke-width="4"/>
+  <circle cx="360" cy="152" r="56" fill="url(#clock)" opacity="0.15"/>
+  <circle cx="360" cy="152" r="56" fill="none" stroke="#38bdf8" stroke-width="2" opacity="0.4"/>
+
+  <!-- Clock face -->
+  <!-- Hour ticks -->
+  <line x1="360" y1="104" x2="360" y2="114" stroke="#7dd3fc" stroke-width="3" stroke-linecap="round"/>
+  <line x1="360" y1="190" x2="360" y2="200" stroke="#7dd3fc" stroke-width="3" stroke-linecap="round"/>
+  <line x1="308" y1="152" x2="318" y2="152" stroke="#7dd3fc" stroke-width="3" stroke-linecap="round"/>
+  <line x1="402" y1="152" x2="412" y2="152" stroke="#7dd3fc" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Clock hands -->
+  <line x1="360" y1="152" x2="360" y2="122" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="360" y1="152" x2="383" y2="165" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Clock center dot -->
+  <circle cx="360" cy="152" r="5" fill="white"/>
+</svg>
