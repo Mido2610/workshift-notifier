@@ -6,6 +6,7 @@ export interface NotifyConfig {
   sendBeforeMinutes: number;
   sendAtDayStart: boolean;
   dayStartTime: string;
+  dayEndTime: string;
   startShiftMessage: string;
   endShiftMessage: string;
   activeDays: number[];
@@ -18,6 +19,7 @@ const defaults: NotifyConfig = {
   sendBeforeMinutes: 30,
   sendAtDayStart: true,
   dayStartTime: "07:30",
+  dayEndTime: "",
   startShiftMessage: "",
   endShiftMessage: "",
   activeDays: [1, 2, 3, 4, 5],
@@ -30,6 +32,7 @@ function mapDoc(doc: any): NotifyConfig {
     sendBeforeMinutes: doc.sendBeforeMinutes ?? defaults.sendBeforeMinutes,
     sendAtDayStart: doc.sendAtDayStart ?? defaults.sendAtDayStart,
     dayStartTime: doc.dayStartTime || defaults.dayStartTime,
+    dayEndTime: doc.dayEndTime || "",
     startShiftMessage: doc.startShiftMessage || "",
     endShiftMessage: doc.endShiftMessage || "",
     activeDays: doc.activeDays ?? defaults.activeDays,

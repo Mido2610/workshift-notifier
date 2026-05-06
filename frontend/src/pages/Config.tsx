@@ -39,6 +39,7 @@ export default function Config() {
     sendBeforeMinutes: 30,
     sendAtDayStart: true,
     dayStartTime: "07:30",
+    dayEndTime: "",
     startShiftMessage: "",
     endShiftMessage: "",
     activeDays: [1, 2, 3, 4, 5],
@@ -327,10 +328,35 @@ export default function Config() {
         </div>
 
         {/* End shift */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-3">
             <Bell className="w-4 h-4 text-gray-400" />
             <h3 className="text-sm font-medium text-gray-200">Tin nhắn cuối ca</h3>
+          </div>
+          <div className="border-b border-gray-800 pb-4">
+            <label className="text-xs text-gray-500 block mb-2">
+              Giờ gửi cuối ca (giờ Việt Nam)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                value={config.dayEndTime}
+                onChange={(e) => setConfig((c) => ({ ...c, dayEndTime: e.target.value }))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500 w-32"
+              />
+              {config.dayEndTime && (
+                <button
+                  type="button"
+                  onClick={() => setConfig((c) => ({ ...c, dayEndTime: "" }))}
+                  className="text-xs text-gray-500 hover:text-gray-300"
+                >
+                  Xóa
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-1.5">
+              {config.dayEndTime ? `Gửi lúc ${config.dayEndTime} vào ngày có ca.` : "Để trống → gửi theo giờ kết thúc trong Google Calendar."}
+            </p>
           </div>
           <textarea
             value={config.endShiftMessage}
@@ -339,7 +365,6 @@ export default function Config() {
             rows={3}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
           />
-          <p className="text-xs text-gray-600">Gửi đúng lúc giờ kết thúc ca theo Google Calendar.</p>
         </div>
 
         {/* Save */}

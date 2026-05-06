@@ -11,6 +11,8 @@ const notifyConfigSchema = new mongoose.Schema(
     sendAtDayStart: { type: Boolean, default: true },
     // Giờ gửi đầu ngày (HH:MM, giờ Việt Nam)
     dayStartTime: { type: String, default: "07:30" },
+    // Giờ gửi cuối ca cố định (HH:MM, giờ Việt Nam)
+    dayEndTime: { type: String, default: "" },
     // Template tin nhắn — hỗ trợ biến: {name} {date} {time} {summary}
     messageTemplate: { type: String, default: "" },
     // Template tin nhắn cuối ca

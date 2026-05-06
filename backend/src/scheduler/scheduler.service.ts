@@ -69,16 +69,31 @@ export class SchedulerService {
       }
     }
 
-    // Gửi cuối ca
-    if (config.endShiftMessage) {
-      for (const event of todayEvents) {
-        if (!event.endDateTime) continue;
-        const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);
-        if (Math.abs(now.diff(endMoment, "minutes")) <= 1) {
-          const result = await this.notificationService.sendForEvent(event, "scheduler-end", config.endShiftMessage);
-          if (result.sent) this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
-          else if (result.error) this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
+    // Gửi cuối ca — ưu tiên dayEndTime cố định, fallback event.endDateTime
+    if (config.endShiftMessage && todayEvents.length > 0) {
+      let shouldSendEnd = false;
+
+      if (config.dayEndTime) {
+        const [hh, mm] = config.dayEndTime.split(":").map(Number);
+        const endMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
+        shouldSendEnd = Math.abs(now.diff(endMoment, "minutes")) <= 1;
+      } else {
+        // fallback: dùng endDateTime của event đầu tiên có giờ kết thúc
+        for (const event of todayEvents) {
+          if (!event.endDateTime) continue;
+          const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);
+          if (Math.abs(now.diff(endMoment, "minutes")) <= 1) {
+            shouldSendEnd = true;
+            break;
+          }
         }
+      }
+
+      if (shouldSendEnd) {
+        const event = todayEvents[0];
+        const result = await this.notificationService.sendForEvent(event, "scheduler-end", config.endShiftMessage);
+        if (result.sent) this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
+        else if (result.error) this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
       }
     }
   }
