@@ -66,7 +66,7 @@ export class SchedulerService {
     }
 
     // Gửi cuối ca
-    if (config.sendAtShiftEnd && config.endShiftMessage) {
+    if (config.endShiftMessage) {
       for (const event of todayEvents) {
         if (!event.endDateTime) continue;
         const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);

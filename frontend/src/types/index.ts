@@ -36,7 +36,6 @@ export interface NotifyConfig {
   sendAtDayStart: boolean;
   dayStartTime: string;
   startShiftMessage: string;
-  sendAtShiftEnd: boolean;
   endShiftMessage: string;
   activeDays: number[];
   ownerCalendarName: string;

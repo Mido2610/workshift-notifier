@@ -17,8 +17,6 @@ const notifyConfigSchema = new mongoose.Schema(
     endShiftMessageTemplate: { type: String, default: "" },
     // Tin nhắn tự động đầu ca
     startShiftMessage: { type: String, default: "" },
-    // Gửi thông báo khi kết thúc ca
-    sendAtShiftEnd: { type: Boolean, default: false },
     // Tin nhắn tự động cuối ca
     endShiftMessage: { type: String, default: "" },
     // Ngày trong tuần được phép gửi (0=CN, 1=T2, ..., 6=T7)

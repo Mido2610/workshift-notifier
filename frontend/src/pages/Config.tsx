@@ -40,7 +40,6 @@ export default function Config() {
     sendAtDayStart: true,
     dayStartTime: "07:30",
     startShiftMessage: "",
-    sendAtShiftEnd: false,
     endShiftMessage: "",
     activeDays: [1, 2, 3, 4, 5],
     ownerCalendarName: "",
@@ -330,30 +329,17 @@ export default function Config() {
 
         {/* End shift */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${config.sendAtShiftEnd ? "bg-blue-500/15" : "bg-gray-800"}`}>
-                <Bell className={`w-4 h-4 ${config.sendAtShiftEnd ? "text-blue-400" : "text-gray-500"}`} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Gửi cuối ca</p>
-                <p className="text-xs text-gray-500 mt-0.5">Tự động gửi khi ca kết thúc</p>
-              </div>
-            </div>
-            <Toggle
-              checked={config.sendAtShiftEnd}
-              onChange={() => setConfig((c) => ({ ...c, sendAtShiftEnd: !c.sendAtShiftEnd }))}
-            />
+          <div className="flex items-center gap-3">
+            <Bell className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-medium text-gray-200">Tin nhắn cuối ca</h3>
           </div>
-          {config.sendAtShiftEnd && (
-            <textarea
-              value={config.endShiftMessage}
-              onChange={(e) => setConfig((c) => ({ ...c, endShiftMessage: e.target.value }))}
-              placeholder="Nhập nội dung tự động gửi lúc cuối ca..."
-              rows={3}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
-            />
-          )}
+          <textarea
+            value={config.endShiftMessage}
+            onChange={(e) => setConfig((c) => ({ ...c, endShiftMessage: e.target.value }))}
+            placeholder="Nhập nội dung tự động gửi lúc cuối ca..."
+            rows={3}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none"
+          />
         </div>
 
         {/* Save */}
