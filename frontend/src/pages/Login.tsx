@@ -52,14 +52,6 @@ export default function Login() {
             Đăng nhập bằng GitHub
           </a>
 
-          {import.meta.env.DEV && (
-            <a
-              href={`${API_URL}/api/auth/dev-login?login=Mido2610`}
-              className="flex items-center justify-center gap-3 w-full py-3 px-4 mt-3 bg-yellow-900/30 hover:bg-yellow-900/50 border border-yellow-700/40 rounded-xl text-sm font-medium text-yellow-400 transition-all duration-200"
-            >
-              Dev Login (local only)
-            </a>
-          )}
 
           <p className="text-xs text-gray-600 text-center mt-6">
             Chỉ dành cho team Mmenu · engineer-management
