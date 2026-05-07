@@ -22,6 +22,10 @@ async function bootstrap() {
 
   app.use(bodyParser.json({ limit: "5mb" }));
 
+  // Health check for UptimeRobot / keep-alive pings
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get("/api/health", (_req: any, res: any) => res.json({ status: "ok", ts: Date.now() }));
+
   const port = process.env.PORT || 4000;
   await app.listen(port);
   console.log(`🚀 Backend running on port ${port}`);
