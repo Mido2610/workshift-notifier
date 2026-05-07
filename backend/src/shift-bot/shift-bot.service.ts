@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import axios from "axios";
 import { ShiftLogModel } from "../models/shift-log.schema";
 import { VIETNAM_TZ } from "../constants";
+import { buildEndShiftPrompt } from "./shift-bot.prompt";
 
 @Injectable()
 export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
@@ -255,7 +256,6 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
 
   private async generateSummary(username: string, messages: string[]): Promise<string> {
     const header = `${username} Kết thúc ca trực`;
-    const rawList = messages.map((m, i) => `${i + 1}. ${m}`).join("\n");
 
     if (!this.anthropic) {
       return `${header}\n${messages.join("\n")}`;
@@ -264,18 +264,7 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
       const response = await this.anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content:
-              `Bạn là trợ lý tổng hợp báo cáo ca trực CSKH. ` +
-              `Dưới đây là các ghi chú trong ca của nhân viên ${username}:\n\n${rawList}\n\n` +
-              `Hãy tổng hợp thành báo cáo kết ca ngắn gọn, giữ nguyên tên khách hàng và link nếu có. ` +
-              `Định dạng:\n${header}\n` +
-              `A [Tên KH] - [nội dung ngắn gọn]\n...` +
-              `\nChỉ trả về nội dung báo cáo, không giải thích thêm.`,
-          },
-        ],
+        messages: [{ role: "user", content: buildEndShiftPrompt(username, messages) }],
       });
       return (response.content[0] as any).text?.trim() || `${header}\n${messages.join("\n")}`;
     } catch (err: any) {
