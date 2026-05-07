@@ -2,9 +2,9 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/commo
 import { Telegraf, Context, Markup } from "telegraf";
 import * as moment from "moment-timezone";
 import Anthropic from "@anthropic-ai/sdk";
+import axios from "axios";
 import { ShiftLogModel } from "../models/shift-log.schema";
 import { TelegramLinkModel } from "../models/telegram-link.schema";
-import { NotificationService } from "../notification/notification.service";
 import { VIETNAM_TZ } from "../constants";
 import { buildEndShiftPrompt } from "./shift-bot.prompt";
 
@@ -17,7 +17,8 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
   // userId → pending summary (chờ confirm)
   private pendingPreview = new Map<number, string>();
 
-  constructor(private readonly notificationService: NotificationService) {}
+  private readonly slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || "";
+  private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
 
   onModuleInit() {
     const token = process.env.SHIFT_BOT_TOKEN;
@@ -304,16 +305,9 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
       await ShiftLogModel.findByIdAndUpdate(log._id, { status: "closed", summary });
     }
 
-    // Tra TelegramLink để lấy githubLogin → gửi qua NotificationService (cùng kênh với scheduler)
-    const link = await TelegramLinkModel.findOne({ telegramChatId: uid }).lean();
-    const githubLogin = link?.githubLogin || this.username(ctx);
-    const result = await this.notificationService.sendMessage(githubLogin, summary);
-    if (result.ok) {
-      await ctx.reply("✅ Đã gửi báo cáo lên channel!");
-    } else {
-      await ctx.reply(`⚠️ Gửi thất bại: ${result.error}`);
-    }
-    this.logger.log(`[ShiftBot] End-shift confirmed by @${this.username(ctx)} (github: ${githubLogin})`);
+    await this.sendToChannel(summary);
+    await ctx.reply("✅ Đã gửi báo cáo lên channel!");
+    this.logger.log(`[ShiftBot] End-shift confirmed by @${this.username(ctx)}`);
   }
 
   private async handleCancel(ctx: Context) {
@@ -345,4 +339,19 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // ─── Send to channel ───────────────────────────────────────────────────────
+
+  private async sendToChannel(summary: string): Promise<void> {
+    await Promise.all([
+      this.slackWebhookUrl
+        ? axios.post(this.slackWebhookUrl, { text: summary })
+        : Promise.resolve(),
+      this.telegramChatId
+        ? axios.post(
+            `https://api.telegram.org/bot${process.env.SHIFT_BOT_TOKEN}/sendMessage`,
+            { chat_id: this.telegramChatId, text: summary }
+          )
+        : Promise.resolve(),
+    ]);
+  }
 }
