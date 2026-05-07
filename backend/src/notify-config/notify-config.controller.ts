@@ -8,12 +8,12 @@ export class NotifyConfigController {
   constructor(private readonly configService: NotifyConfigService) {}
 
   @Get()
-  async getConfig() {
-    return this.configService.getConfig();
+  getConfig(@Request() req: any) {
+    return this.configService.getConfig(req.user.login);
   }
 
   @Post()
-  async saveConfig(@Body() body: any, @Request() req: any) {
-    return this.configService.saveConfig(body, req.user?.login || "unknown");
+  saveConfig(@Body() body: any, @Request() req: any) {
+    return this.configService.saveConfig(req.user.login, body);
   }
 }

@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const notifyConfigSchema = new mongoose.Schema(
   {
-    // singleton – luôn chỉ có 1 bản ghi config
-    singleton: { type: String, default: "global", unique: true },
+    // mỗi user có 1 config riêng, key là githubLogin
+    githubLogin: { type: String, required: true, unique: true },
     enabled: { type: Boolean, default: false },
     // Gửi trước ca bao nhiêu phút (0 = gửi đúng giờ bắt đầu)
     sendBeforeMinutes: { type: Number, default: 30 },

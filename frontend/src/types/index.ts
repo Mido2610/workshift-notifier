@@ -31,6 +31,7 @@ export interface NotificationLog {
 }
 
 export interface NotifyConfig {
+  githubLogin?: string;
   enabled: boolean;
   sendBeforeMinutes: number;
   sendAtDayStart: boolean;

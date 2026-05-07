@@ -3,7 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import * as moment from "moment-timezone";
 import { CalendarService } from "../calendar/calendar.service";
 import { NotificationService } from "../notification/notification.service";
-import { NotifyConfigService } from "../notify-config/notify-config.service";
+import { NotifyConfigService, NotifyConfig } from "../notify-config/notify-config.service";
 import { VIETNAM_TZ } from "../constants";
 
 @Injectable()
@@ -18,8 +18,15 @@ export class SchedulerService {
 
   @Cron("* * * * *")
   async checkAndNotify() {
-    const config = await this.notifyConfigService.getConfig();
-    if (!config.enabled) return;
+    const allConfigs = await this.notifyConfigService.getAllEnabled();
+    for (const config of allConfigs) {
+      await this.processUser(config).catch((err) =>
+        this.logger.error(`[Scheduler] Error for ${config.githubLogin}: ${err.message}`)
+      );
+    }
+  }
+
+  private async processUser(config: NotifyConfig) {
     if (!config.ownerCalendarName) return;
 
     const now = moment.tz(VIETNAM_TZ);
@@ -29,9 +36,12 @@ export class SchedulerService {
     const today = now.format("YYYY-MM-DD");
     const tomorrow = now.clone().add(1, "day").format("YYYY-MM-DD");
     const ownerName = config.ownerCalendarName.toLowerCase();
+
     const matchesOwner = (e: { summary: string; displayName?: string }) => {
-      const lower = ownerName;
-      return e.summary.toLowerCase().includes(lower) || (e.displayName || "").toLowerCase().includes(lower);
+      return (
+        e.summary.toLowerCase().includes(ownerName) ||
+        (e.displayName || "").toLowerCase().includes(ownerName)
+      );
     };
 
     // Gửi đầu ngày
@@ -40,10 +50,9 @@ export class SchedulerService {
       const dayStartMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
       if (Math.abs(now.diff(dayStartMoment, "minutes")) <= 1) {
         const events = await this.calendarService.getEventsForDate(today);
-        const ownerEvents = events.filter(matchesOwner);
-        for (const event of ownerEvents) {
+        for (const event of events.filter(matchesOwner)) {
           const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
-          if (result.sent) this.logger.log(`[Scheduler] Sent day-start: "${event.summary}"`);
+          if (result.sent) this.logger.log(`[Scheduler] Day-start → ${config.githubLogin}: "${event.summary}"`);
         }
       }
     }
@@ -63,37 +72,31 @@ export class SchedulerService {
         const notifyAt = moment.tz(event.startDateTime, VIETNAM_TZ).subtract(config.sendBeforeMinutes, "minutes");
         if (Math.abs(now.diff(notifyAt, "minutes")) <= 1) {
           const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
-          if (result.sent) this.logger.log(`[Scheduler] Sent pre-shift: "${event.summary}"`);
-          else if (result.error) this.logger.error(`[Scheduler] Failed pre-shift: "${event.summary}" — ${result.error}`);
+          if (result.sent) this.logger.log(`[Scheduler] Pre-shift → ${config.githubLogin}: "${event.summary}"`);
+          else if (result.error) this.logger.error(`[Scheduler] Pre-shift fail → ${config.githubLogin}: ${result.error}`);
         }
       }
     }
 
-    // Gửi cuối ca — ưu tiên dayEndTime cố định, fallback event.endDateTime
+    // Gửi cuối ca
     if (config.endShiftMessage && todayEvents.length > 0) {
       let shouldSendEnd = false;
-
       if (config.dayEndTime) {
         const [hh, mm] = config.dayEndTime.split(":").map(Number);
         const endMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
         shouldSendEnd = Math.abs(now.diff(endMoment, "minutes")) <= 1;
       } else {
-        // fallback: dùng endDateTime của event đầu tiên có giờ kết thúc
         for (const event of todayEvents) {
           if (!event.endDateTime) continue;
           const endMoment = moment.tz(event.endDateTime, VIETNAM_TZ);
-          if (Math.abs(now.diff(endMoment, "minutes")) <= 1) {
-            shouldSendEnd = true;
-            break;
-          }
+          if (Math.abs(now.diff(endMoment, "minutes")) <= 1) { shouldSendEnd = true; break; }
         }
       }
-
       if (shouldSendEnd) {
         const event = todayEvents[0];
         const result = await this.notificationService.sendForEvent(event, "scheduler-end", config.endShiftMessage);
-        if (result.sent) this.logger.log(`[Scheduler] Sent end-shift: "${event.summary}"`);
-        else if (result.error) this.logger.error(`[Scheduler] Failed end-shift: "${event.summary}" — ${result.error}`);
+        if (result.sent) this.logger.log(`[Scheduler] End-shift → ${config.githubLogin}: "${event.summary}"`);
+        else if (result.error) this.logger.error(`[Scheduler] End-shift fail → ${config.githubLogin}: ${result.error}`);
       }
     }
   }
