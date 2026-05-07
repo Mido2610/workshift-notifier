@@ -35,7 +35,12 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
 
     this.bot = new Telegraf(token);
     this.setupHandlers();
-    this.bot.launch();
+    this.bot.catch((err: any) => {
+      this.logger.error(`[ShiftBot] Handler error: ${err?.message}`);
+    });
+    this.bot.launch().catch((err: any) => {
+      this.logger.error(`[ShiftBot] Launch error: ${err?.message}`);
+    });
     this.logger.log("✅ ShiftBot launched");
   }
 
