@@ -43,6 +43,16 @@ export interface NotifyConfig {
   updatedBy?: string;
 }
 
+export interface SystemConfig {
+  calendarId: string;
+  slackWebhookUrl: string;
+  telegramChatId: string;
+  timezone: string;
+  defaultStartMessage: string;
+  defaultEndMessage: string;
+  updatedBy?: string;
+}
+
 export interface Stats {
   sent: number;
   failed: number;

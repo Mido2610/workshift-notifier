@@ -33,8 +33,14 @@ export const getLogs = (page = 1, limit = 20) =>
 export const getStats = () =>
   api.get("/api/notification/stats").then((r) => r.data);
 
-// ---------- Config ----------
+// ---------- User Config ----------
 export const getConfig = () => api.get("/api/config").then((r) => r.data);
 
 export const saveConfig = (data: Record<string, unknown>) =>
   api.post("/api/config", data).then((r) => r.data);
+
+// ---------- System Config ----------
+export const getSystemConfig = () => api.get("/api/system-config").then((r) => r.data);
+
+export const saveSystemConfig = (data: Record<string, unknown>) =>
+  api.post("/api/system-config", data).then((r) => r.data);

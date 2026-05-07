@@ -6,6 +6,7 @@ import { NotificationModule } from "./notification/notification.module";
 import { NotifyConfigModule } from "./notify-config/notify-config.module";
 import { SchedulerModule } from "./scheduler/scheduler.module";
 import { ShiftBotModule } from "./shift-bot/shift-bot.module";
+import { SystemConfigModule } from "./system-config/system-config.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ShiftBotModule } from "./shift-bot/shift-bot.module";
     NotificationModule,
     SchedulerModule,
     ShiftBotModule,
+    SystemConfigModule,
   ],
 })
 export class AppModule {}

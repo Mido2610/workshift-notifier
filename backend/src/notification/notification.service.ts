@@ -2,14 +2,15 @@ import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { NotificationLogModel } from "../models/notification-log.schema";
 import { CalendarEvent } from "../calendar/calendar.service";
+import { SystemConfigService } from "../system-config/system-config.service";
 
 export type TriggerType = "scheduler" | "scheduler-end" | "manual";
 
 @Injectable()
 export class NotificationService {
   private readonly telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || "";
-  private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
-  private readonly slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || "";
+
+  constructor(private readonly systemConfigService: SystemConfigService) {}
 
   /** Gửi message cho một event (scheduler dùng) */
   async sendForEvent(
@@ -72,15 +73,16 @@ export class NotificationService {
   }
 
   private async sendToChannel(githubLogin: string, message: string): Promise<void> {
+    const sys = await this.systemConfigService.getConfig();
+    const slackUrl = sys.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL || "";
+    const tgChatId = sys.telegramChatId || process.env.TELEGRAM_CHAT_ID || "";
     const slackText = `${githubLogin}\n${message}`;
     await Promise.all([
-      this.slackWebhookUrl
-        ? axios.post(this.slackWebhookUrl, { text: slackText })
-        : Promise.resolve(),
-      this.telegramBotToken && this.telegramChatId
+      slackUrl ? axios.post(slackUrl, { text: slackText }) : Promise.resolve(),
+      this.telegramBotToken && tgChatId
         ? axios.post(
             `https://api.telegram.org/bot${this.telegramBotToken}/sendMessage`,
-            { chat_id: this.telegramChatId, text: message, parse_mode: "HTML" }
+            { chat_id: tgChatId, text: message, parse_mode: "HTML" }
           )
         : Promise.resolve(),
     ]);
