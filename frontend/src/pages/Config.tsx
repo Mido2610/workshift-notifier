@@ -5,7 +5,7 @@ import {
   CheckCircle, MessageCircle, ExternalLink, Server, Shield,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getConfig, saveConfig, getCalendarMonth, getCalendarPeople, getSystemConfig, saveSystemConfig } from "../api";
+import { getConfig, saveConfig, getCalendarMonth, getCalendarPeople, getSystemConfig, saveSystemConfig, getTelegramLinkStatus } from "../api";
 import type { NotifyConfig, SystemConfig, CalendarEvent } from "../types";
 
 function Toggle({ checked, onChange, color = "bg-brand-500" }: { checked: boolean; onChange: () => void; color?: string }) {
@@ -45,6 +45,9 @@ export default function Config() {
   const [sysSaving, setSysSaving] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Telegram link status
+  const [telegramLinked, setTelegramLinked] = useState<{ linked: boolean; telegramUsername: string | null } | null>(null);
+
   // Calendar people
   const [calendarPeople, setCalendarPeople] = useState<{ displayName: string; githubLogin: string }[]>([]);
   const [matchedDates, setMatchedDates] = useState<CalendarEvent[]>([]);
@@ -72,6 +75,8 @@ export default function Config() {
         }
       } catch {}
     }
+
+    getTelegramLinkStatus().then(setTelegramLinked).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -160,19 +165,30 @@ export default function Config() {
       {tab === "user" && (
         <div className="space-y-3">
           {/* ShiftBot */}
-          <a href="https://t.me/workshift_notifier_bot" target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-between bg-[#229ED9]/10 border border-[#229ED9]/30 hover:border-[#229ED9]/60 rounded-xl p-5 transition-colors group">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#229ED9]/20 flex items-center justify-center">
-                <MessageCircle className="w-4 h-4 text-[#229ED9]" />
+          <div className="bg-[#229ED9]/10 border border-[#229ED9]/30 rounded-xl p-5 space-y-3">
+            <a href="https://t.me/workshift_notifier_bot" target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-[#229ED9]/20 flex items-center justify-center">
+                  <MessageCircle className="w-4 h-4 text-[#229ED9]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-200">ShiftBot — Ghi nhận ca trực</p>
+                  <p className="text-xs text-gray-500 mt-0.5">@workshift_notifier_bot · Nhắn /endshift để kết ca</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">ShiftBot — Ghi nhận ca trực</p>
-                <p className="text-xs text-gray-500 mt-0.5">@workshift_notifier_bot · Nhắn /endshift để kết ca</p>
+              <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-[#229ED9] transition-colors" />
+            </a>
+            {telegramLinked !== null && (
+              <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${telegramLinked.linked ? "bg-green-500/10 text-green-400" : "bg-gray-800 text-gray-500"}`}>
+                <div className={`w-2 h-2 rounded-full ${telegramLinked.linked ? "bg-green-400" : "bg-gray-600"}`} />
+                {telegramLinked.linked
+                  ? <>Đã liên kết{telegramLinked.telegramUsername ? ` · @${telegramLinked.telegramUsername}` : ""} · Nhắn <code className="bg-green-500/20 px-1 rounded">/unlink</code> để hủy</>
+                  : <>Chưa liên kết · Nhắn <code className="bg-gray-700 px-1 rounded">/link &lt;github_username&gt;</code> trong bot để nhận thông báo riêng</>
+                }
               </div>
-            </div>
-            <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-[#229ED9] transition-colors" />
-          </a>
+            )}
+          </div>
 
           {/* Calendar name */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">

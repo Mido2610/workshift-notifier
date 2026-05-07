@@ -7,7 +7,7 @@ export function buildEndShiftPrompt(username: string, messages: string[]): strin
 Tổng hợp các ghi chú trong ca thành báo cáo kết ca ngắn gọn, rõ ràng.
 
 ## Quy tắc định dạng
-- Dòng đầu tiên: \`${username} Kết thúc ca trực\`
+- Dòng đầu tiên: \`${username} Kết thtrúc ca trực\`
 - Mỗi khách hàng/vấn đề trên 1 dòng: \`A [Tên KH] - [nội dung ngắn gọn] - [trạng thái]\`
 - Giữ nguyên tên khách hàng, link Trello/task nếu có
 - Trạng thái điển hình: "Team đã phản hồi" / "Team đang xử lý" / "Đã giải quyết" / "Chờ phản hồi"
@@ -16,7 +16,7 @@ Tổng hợp các ghi chú trong ca thành báo cáo kết ca ngắn gọn, rõ 
 
 ## Ví dụ đầu vào
 1. A Hoàng nhờ check task https://trello.com/c/abc123 - team đã rep rồi
-2. khách Alex hỏi về biểu tượng danh mục trên app
+2. khách Alex hỏi về biểu tượng danh mục ên app
 3. Quân Nguyễn - task https://trello.com/c/xyz456 chưa xử lý
 
 ## Ví dụ đầu ra tốt

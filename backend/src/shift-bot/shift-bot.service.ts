@@ -4,6 +4,7 @@ import * as moment from "moment-timezone";
 import Anthropic from "@anthropic-ai/sdk";
 import axios from "axios";
 import { ShiftLogModel } from "../models/shift-log.schema";
+import { TelegramLinkModel } from "../models/telegram-link.schema";
 import { VIETNAM_TZ } from "../constants";
 import { buildEndShiftPrompt } from "./shift-bot.prompt";
 
@@ -55,7 +56,9 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
         "/mylogs — Xem danh sách log hôm nay\n" +
         "/editlog \\[số\\] \\[nội dung mới\\] — Sửa log\n" +
         "/deletelog \\[số\\] — Xóa log\n" +
-        "/endshift — Xem preview báo cáo kết ca",
+        "/endshift — Xem preview báo cáo kết ca\n" +
+        "/link \\[github\\_username\\] — Liên kết để nhận thông báo ca trực\n" +
+        "/unlink — Hủy liên kết",
         { parse_mode: "MarkdownV2" }
       )
     );
@@ -77,6 +80,8 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
     this.bot.command("editlog", (ctx) => this.handleEditLog(ctx));
     this.bot.command("deletelog", (ctx) => this.handleDeleteLog(ctx));
     this.bot.command("endshift", (ctx) => this.handleEndShift(ctx));
+    this.bot.command("link", (ctx) => this.handleLink(ctx));
+    this.bot.command("unlink", (ctx) => this.handleUnlink(ctx));
 
     // Inline button: Gửi / Hủy
     this.bot.action("confirm_send", (ctx) => this.handleConfirm(ctx));
@@ -172,6 +177,43 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
     log.markModified("messages");
     await log.save();
     await ctx.reply(`✏️ Đã sửa log #${idx + 1}: ${newText}`);
+  }
+
+  // ─── /link ─────────────────────────────────────────────────────────────────
+
+  private async handleLink(ctx: Context) {
+    if (!ctx.message || !("text" in ctx.message)) return;
+    const githubLogin = ctx.message.text.replace(/^\/link\s*/i, "").trim();
+    if (!githubLogin) {
+      return ctx.reply("Cú pháp: /link <github_username>\nVí dụ: /link Mido2610");
+    }
+
+    const chatId = this.userId(ctx);
+    const username = this.username(ctx);
+
+    await TelegramLinkModel.findOneAndUpdate(
+      { githubLogin },
+      { githubLogin, telegramChatId: chatId, telegramUsername: username },
+      { upsert: true, new: true }
+    );
+
+    await ctx.reply(
+      `✅ Đã liên kết Telegram của bạn với GitHub \`${githubLogin}\`.\n` +
+      `Từ nay các thông báo ca trực sẽ được gửi trực tiếp vào chat này.`,
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  // ─── /unlink ───────────────────────────────────────────────────────────────
+
+  private async handleUnlink(ctx: Context) {
+    const chatId = this.userId(ctx);
+    const deleted = await TelegramLinkModel.findOneAndDelete({ telegramChatId: chatId });
+    if (deleted) {
+      await ctx.reply(`✅ Đã hủy liên kết với GitHub \`${deleted.githubLogin}\`.`, { parse_mode: "Markdown" });
+    } else {
+      await ctx.reply("Bạn chưa liên kết tài khoản GitHub nào.");
+    }
   }
 
   // ─── /deletelog ────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { NotificationLogModel } from "../models/notification-log.schema";
+import { TelegramLinkModel } from "../models/telegram-link.schema";
 import { CalendarEvent } from "../calendar/calendar.service";
 import { SystemConfigService } from "../system-config/system-config.service";
 import { SLACK_USER_ID_MAP } from "../constants";
@@ -88,27 +89,44 @@ export class NotificationService {
     if (existing) return { sent: false };
 
     const slackUserId = SLACK_USER_ID_MAP[githubLogin];
+    const telegramLink = await TelegramLinkModel.findOne({ githubLogin }).lean();
     let lastError: string | undefined;
 
+    const sends: Promise<void>[] = [];
+
     if (slackUserId && this.slackBotToken) {
-      try {
-        await axios.post(
+      sends.push(
+        axios.post(
           "https://slack.com/api/chat.postMessage",
           { channel: slackUserId, text: message },
           { headers: { Authorization: `Bearer ${this.slackBotToken}` } }
-        );
-      } catch (err: any) {
-        lastError = err?.message || "Slack DM failed";
-        this.logger.error(`[DM] Slack DM failed for ${githubLogin}: ${lastError}`);
-      }
-    } else {
-      // Fallback: gửi vào channel nếu không có Slack ID
-      this.logger.warn(`[DM] No Slack ID for ${githubLogin} — fallback to channel`);
+        ).then(() => undefined).catch((err: any) => {
+          this.logger.error(`[DM] Slack DM failed for ${githubLogin}: ${err?.message}`);
+        })
+      );
+    }
+
+    if (telegramLink?.telegramChatId && this.telegramBotToken) {
+      sends.push(
+        axios.post(
+          `https://api.telegram.org/bot${this.telegramBotToken}/sendMessage`,
+          { chat_id: telegramLink.telegramChatId, text: message }
+        ).then(() => undefined).catch((err: any) => {
+          this.logger.error(`[DM] Telegram DM failed for ${githubLogin}: ${err?.message}`);
+        })
+      );
+    }
+
+    if (sends.length === 0) {
+      // Fallback: gửi vào channel nếu không có Slack ID hoặc Telegram link
+      this.logger.warn(`[DM] No DM channels for ${githubLogin} — fallback to channel`);
       try {
         await this.sendToChannel(githubLogin, message);
       } catch (err: any) {
         lastError = err?.message;
       }
+    } else {
+      await Promise.all(sends);
     }
 
     await NotificationLogModel.findOneAndUpdate(

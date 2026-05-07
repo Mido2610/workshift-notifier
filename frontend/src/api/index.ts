@@ -36,6 +36,9 @@ export const getStats = () =>
 // ---------- User Config ----------
 export const getConfig = () => api.get("/api/config").then((r) => r.data);
 
+export const getTelegramLinkStatus = () =>
+  api.get("/api/config/telegram-link").then((r) => r.data as { linked: boolean; telegramUsername: string | null });
+
 export const saveConfig = (data: Record<string, unknown>) =>
   api.post("/api/config", data).then((r) => r.data);
 
