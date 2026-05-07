@@ -1,9 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import * as moment from "moment-timezone";
+import axios from "axios";
 import { CalendarService } from "../calendar/calendar.service";
 import { NotificationService } from "../notification/notification.service";
 import { NotifyConfigService, NotifyConfig } from "../notify-config/notify-config.service";
+import { TelegramLinkModel } from "../models/telegram-link.schema";
+import { ShiftLogModel } from "../models/shift-log.schema";
 import { VIETNAM_TZ } from "../constants";
 
 @Injectable()
@@ -97,6 +100,37 @@ export class SchedulerService {
         }
       }
       if (shouldSendEnd) {
+        // Kiểm tra user đã /endshift qua ShiftBot chưa
+        const telegramLink = await TelegramLinkModel.findOne({ githubLogin: config.githubLogin }).lean();
+        if (telegramLink) {
+          const shiftLog = await ShiftLogModel.findOne({
+            telegramUserId: telegramLink.telegramChatId,
+            date: today,
+          }).lean();
+
+          if (shiftLog?.status === "closed") {
+            // User đã báo cáo qua ShiftBot → skip, không gửi duplicate
+            this.logger.log(`[Scheduler] End-shift skipped (already reported via ShiftBot) → ${config.githubLogin}`);
+            return;
+          }
+
+          // Có log nhưng chưa báo → nhắc qua Telegram DM
+          const shiftBotToken = process.env.SHIFT_BOT_TOKEN;
+          if (shiftBotToken) {
+            const msgCount = shiftLog?.messages?.length ?? 0;
+            const reminderText = msgCount > 0
+              ? `⏰ Ca trực kết thúc rồi! Bạn có ${msgCount} ghi chú hôm nay.\nDùng /endshift trong @workshift_notifier_bot để tổng hợp và gửi báo cáo nhé.`
+              : `⏰ Ca trực kết thúc rồi! Dùng /endshift trong @workshift_notifier_bot để gửi báo cáo nhé.`;
+            await axios.post(
+              `https://api.telegram.org/bot${shiftBotToken}/sendMessage`,
+              { chat_id: telegramLink.telegramChatId, text: reminderText }
+            ).catch((err: any) => this.logger.error(`[Scheduler] Telegram reminder failed: ${err?.message}`));
+            this.logger.log(`[Scheduler] End-shift reminder → ${config.githubLogin}`);
+            return;
+          }
+        }
+
+        // Fallback: gửi endShiftMessage vào channel như cũ
         const event = todayEvents[0];
         const result = await this.notificationService.sendForEvent(event, "scheduler-end", config.endShiftMessage);
         if (result.sent) this.logger.log(`[Scheduler] End-shift → ${config.githubLogin}: "${event.summary}"`);
