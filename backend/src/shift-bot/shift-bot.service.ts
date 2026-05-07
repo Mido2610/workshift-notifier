@@ -5,6 +5,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import axios from "axios";
 import { ShiftLogModel } from "../models/shift-log.schema";
 import { TelegramLinkModel } from "../models/telegram-link.schema";
+import { CalendarService } from "../calendar/calendar.service";
+import { NotifyConfigService } from "../notify-config/notify-config.service";
 import { VIETNAM_TZ } from "../constants";
 import { buildEndShiftPrompt } from "./shift-bot.prompt";
 
@@ -19,6 +21,11 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
 
   private readonly slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || "";
   private readonly telegramChatId = process.env.TELEGRAM_CHAT_ID || "";
+
+  constructor(
+    private readonly calendarService: CalendarService,
+    private readonly notifyConfigService: NotifyConfigService,
+  ) {}
 
   onModuleInit() {
     const token = process.env.SHIFT_BOT_TOKEN;
@@ -263,6 +270,32 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
 
   private async handleEndShift(ctx: Context) {
     const uid = this.userId(ctx);
+
+    // Kiểm tra TelegramLink → githubLogin → calendar
+    const link = await TelegramLinkModel.findOne({ telegramChatId: uid }).lean();
+    if (!link) {
+      return ctx.reply(
+        "⚠️ Bạn chưa liên kết tài khoản GitHub.\n" +
+        "Dùng /link <github\\_username> để liên kết trước.",
+        { parse_mode: "Markdown" }
+      );
+    }
+
+    const notifyConfig = await this.notifyConfigService.getConfig(link.githubLogin);
+    if (!notifyConfig.ownerCalendarName) {
+      return ctx.reply("⚠️ Tài khoản chưa cấu hình tên trong Google Calendar. Vào web để cài đặt.");
+    }
+
+    const today = this.today();
+    const events = await this.calendarService.getEventsForDate(today);
+    const ownerName = notifyConfig.ownerCalendarName.toLowerCase();
+    const hasShift = events.some(
+      (e) => e.summary.toLowerCase().includes(ownerName) || (e.displayName || "").toLowerCase().includes(ownerName)
+    );
+    if (!hasShift) {
+      return ctx.reply("📅 Hôm nay bạn không có ca trực, không thể gửi báo cáo kết ca.");
+    }
+
     const log = await this.getActiveLog(uid);
     if (!log || log.messages.length === 0) {
       return ctx.reply("📭 Không có log nào trong ca hôm nay.");
