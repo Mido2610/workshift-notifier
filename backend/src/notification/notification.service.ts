@@ -1,14 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { NotificationLogModel } from "../models/notification-log.schema";
 import { CalendarEvent } from "../calendar/calendar.service";
 import { SystemConfigService } from "../system-config/system-config.service";
+import { SLACK_USER_ID_MAP } from "../constants";
 
-export type TriggerType = "scheduler" | "scheduler-end" | "manual";
+export type TriggerType = "scheduler" | "scheduler-end" | "scheduler-daystart" | "manual";
 
 @Injectable()
 export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
   private readonly telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || "";
+  private readonly slackBotToken = process.env.SLACK_BOT_TOKEN || "";
 
   constructor(private readonly systemConfigService: SystemConfigService) {}
 
@@ -70,6 +73,61 @@ export class NotificationService {
     } catch (err: any) {
       return { ok: false, error: err?.message || "Unknown error" };
     }
+  }
+
+  /** Gửi DM riêng cho người trực — dùng cho "Gửi đầu ngày" */
+  async sendDayStartDm(githubLogin: string, message: string, eventDate: string): Promise<{ sent: boolean; error?: string }> {
+    if (!message) return { sent: false };
+
+    const existing = await NotificationLogModel.findOne({
+      date: eventDate,
+      githubLogin,
+      triggerType: "scheduler-daystart",
+      status: "sent",
+    });
+    if (existing) return { sent: false };
+
+    const slackUserId = SLACK_USER_ID_MAP[githubLogin];
+    let lastError: string | undefined;
+
+    if (slackUserId && this.slackBotToken) {
+      try {
+        await axios.post(
+          "https://slack.com/api/chat.postMessage",
+          { channel: slackUserId, text: message },
+          { headers: { Authorization: `Bearer ${this.slackBotToken}` } }
+        );
+      } catch (err: any) {
+        lastError = err?.message || "Slack DM failed";
+        this.logger.error(`[DM] Slack DM failed for ${githubLogin}: ${lastError}`);
+      }
+    } else {
+      // Fallback: gửi vào channel nếu không có Slack ID
+      this.logger.warn(`[DM] No Slack ID for ${githubLogin} — fallback to channel`);
+      try {
+        await this.sendToChannel(githubLogin, message);
+      } catch (err: any) {
+        lastError = err?.message;
+      }
+    }
+
+    await NotificationLogModel.findOneAndUpdate(
+      { date: eventDate, githubLogin, triggerType: "scheduler-daystart" },
+      {
+        date: eventDate,
+        calendarEventId: `daystart-${eventDate}-${githubLogin}`,
+        eventSummary: `Day-start DM for ${githubLogin}`,
+        githubLogin,
+        message,
+        triggerType: "scheduler-daystart",
+        status: lastError ? "failed" : "sent",
+        sentAt: new Date(),
+        errorMessage: lastError,
+      },
+      { upsert: true }
+    );
+
+    return lastError ? { sent: false, error: lastError } : { sent: true };
   }
 
   private async sendToChannel(githubLogin: string, message: string): Promise<void> {

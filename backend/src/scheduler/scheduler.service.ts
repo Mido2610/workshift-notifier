@@ -44,15 +44,19 @@ export class SchedulerService {
       );
     };
 
-    // Gửi đầu ngày
+    // Gửi đầu ngày — DM riêng cho người trực
     if (config.sendAtDayStart && config.startShiftMessage) {
       const [hh, mm] = config.dayStartTime.split(":").map(Number);
       const dayStartMoment = moment.tz(today, VIETNAM_TZ).hour(hh).minute(mm);
       if (Math.abs(now.diff(dayStartMoment, "minutes")) <= 1) {
         const events = await this.calendarService.getEventsForDate(today);
-        for (const event of events.filter(matchesOwner)) {
-          const result = await this.notificationService.sendForEvent(event, "scheduler", config.startShiftMessage);
-          if (result.sent) this.logger.log(`[Scheduler] Day-start → ${config.githubLogin}: "${event.summary}"`);
+        const hasShift = events.some(matchesOwner);
+        if (hasShift) {
+          const result = await this.notificationService.sendDayStartDm(
+            config.githubLogin, config.startShiftMessage, today
+          );
+          if (result.sent) this.logger.log(`[Scheduler] Day-start DM → ${config.githubLogin}`);
+          else if (result.error) this.logger.error(`[Scheduler] Day-start DM fail → ${config.githubLogin}: ${result.error}`);
         }
       }
     }
