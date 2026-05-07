@@ -38,14 +38,26 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
     this.bot.catch((err: any) => {
       this.logger.error(`[ShiftBot] Handler error: ${err?.message}`);
     });
-    this.bot.launch().catch((err: any) => {
-      this.logger.error(`[ShiftBot] Launch error: ${err?.message}`);
-    });
+    this.launchWithRetry();
     this.logger.log("✅ ShiftBot launched");
   }
 
   async onModuleDestroy() {
     this.bot?.stop("SIGTERM");
+  }
+
+  // ─── Launch with retry on 409 ──────────────────────────────────────────────
+
+  private launchWithRetry(attempt = 1) {
+    this.bot!.launch({ dropPendingUpdates: true }).catch((err: any) => {
+      if (err?.response?.error_code === 409) {
+        const delay = Math.min(30000 * attempt, 120000);
+        this.logger.warn(`[ShiftBot] 409 conflict — retry in ${delay / 1000}s (attempt ${attempt})`);
+        setTimeout(() => this.launchWithRetry(attempt + 1), delay);
+      } else {
+        this.logger.error(`[ShiftBot] Launch error: ${err?.message}`);
+      }
+    });
   }
 
   // ─── Setup ─────────────────────────────────────────────────────────────────
