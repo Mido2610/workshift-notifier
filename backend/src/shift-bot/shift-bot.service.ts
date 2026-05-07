@@ -48,7 +48,14 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
 
   // ─── Launch with retry on 409 ──────────────────────────────────────────────
 
-  private launchWithRetry(attempt = 1) {
+  private async launchWithRetry(attempt = 1) {
+    try {
+      await this.bot!.telegram.deleteWebhook({ drop_pending_updates: true });
+      this.logger.log("[ShiftBot] Webhook cleared");
+    } catch (err: any) {
+      this.logger.warn(`[ShiftBot] deleteWebhook error: ${err?.message}`);
+    }
+
     this.bot!.launch({ dropPendingUpdates: true }).catch((err: any) => {
       if (err?.response?.error_code === 409) {
         const delay = Math.min(30000 * attempt, 120000);
