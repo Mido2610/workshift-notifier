@@ -76,14 +76,14 @@ export class ShiftBotService implements OnModuleInit, OnModuleDestroy {
       ctx.reply(
         "👋 Xin chào! Tôi là ShiftBot — ghi nhận ca trực của bạn.\n\n" +
         "📝 *Lệnh có sẵn:*\n" +
-        "/log \\[nội dung\\] — Thêm ghi chú\n" +
+        "/log [nội dung] — Thêm ghi chú\n" +
         "/mylogs — Xem danh sách log hôm nay\n" +
-        "/editlog \\[số\\] \\[nội dung mới\\] — Sửa log\n" +
-        "/deletelog \\[số\\] — Xóa log\n" +
+        "/editlog [số] [nội dung mới] — Sửa log\n" +
+        "/deletelog [số] — Xóa log\n" +
         "/endshift — Xem preview báo cáo kết ca\n" +
-        "/link \\[github\\_username\\] — Liên kết để nhận thông báo ca trực\n" +
+        "/link [github\\_username] — Liên kết nhận thông báo ca trực\n" +
         "/unlink — Hủy liên kết",
-        { parse_mode: "MarkdownV2" }
+        { parse_mode: "Markdown" }
       )
     );
 
